@@ -1,4 +1,4 @@
-/* درع السياق الاستباقي — منطق لوحة مؤشرات التهديدات */
+/* حصن (Hisn) — منطق لوحة مؤشرات التهديدات */
 'use strict';
 
 const $ = id => document.getElementById(id);
@@ -156,7 +156,7 @@ document.querySelectorAll('.filter').forEach(btn => {
 /* التصدير: تغذية استخباراتية جاهزة للمشاركة مع الجهات المختصة */
 $('exportJson').addEventListener('click', () => {
   const feed = {
-    generator: 'Proactive Context Shield v' + chrome.runtime.getManifest().version,
+    generator: 'حصن (Hisn) v' + chrome.runtime.getManifest().version,
     generatedAt: new Date().toISOString(),
     stats: currentData.stats,
     campaigns: currentData.log
