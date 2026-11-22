@@ -58,7 +58,7 @@ function send(res, status, body) {
 /* ============ أدوات مشتركة ============ */
 
 function normalizeSource(s) {
-  const allowed = ['search', 'maps', 'message', 'sms', 'chat', 'whatsapp', 'direct', 'extension', 'web', 'shortcut', 'pwa'];
+  const allowed = ['search', 'maps', 'message', 'sms', 'chat', 'whatsapp', 'direct', 'extension', 'web', 'shortcut', 'pwa', 'clipboard', 'bookmark'];
   s = String(s || '').toLowerCase();
   return allowed.indexOf(s) !== -1 ? s : 'direct';
 }
@@ -142,10 +142,10 @@ function report(body) {
   const entry = {
     id: 'R' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
     ts: Date.now(),
-    url: String(body.url),
+    url: String(body.url).slice(0, 2000),
     level: body.level || null,
     score: typeof body.score === 'number' ? body.score : null,
-    note: String(body.note || ''),
+    note: String(body.note || '').slice(0, 500),
     source: normalizeSource(body.source),
     status: 'new'
   };
@@ -186,8 +186,13 @@ function threats() {
         caution: scanlog.filter(e => e.level === 'caution').length
       },
       campaigns: campaignClusters(scanlog).slice(0, 50),
-      recent: scanlog.slice(-100).reverse(),
-      reports: reports.slice(-100).reverse()
+      /* الخصوصية: العرض العام يقتصر على النطاق دون عناوين URL الكاملة أو ملاحظات المبلّغين */
+      recent: scanlog.slice(-100).reverse().map(function (e) {
+        return { ts: e.ts, host: e.host, score: e.score, level: e.level, source: e.source };
+      }),
+      reports: reports.slice(-100).reverse().map(function (r) {
+        return { id: r.id, ts: r.ts, url: r.url, level: r.level, score: r.score, source: r.source, status: r.status };
+      })
     }
   };
 }
