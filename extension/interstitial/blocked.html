@@ -2,17 +2,18 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>تم حجب الرابط — درع السياق الاستباقي</title>
+<title>تم حجب الرابط — حصن</title>
 <link rel="stylesheet" href="blocked.css">
 </head>
 <body>
 <main class="wrap">
-  <div class="icon">✕</div>
-  <h1>تم إيقاف وصولك إلى موقع خطير</h1>
+  <div class="icon">🧱</div>
+  <h1>جدار حصن أوقف وصولك إلى موقع خطير</h1>
   <p class="lead">
-    يصنّف <b>درع السياق الاستباقي</b> الرابط التالي كموقع عالي الخطورة للاحتيال المالي،
-    وتم إيقاف تحميله <b>قبل</b> وصول أي بيانات إليه.
+    يصنّف <b>حصن</b> الرابط التالي كموقع عالي الخطورة للاحتيال المالي،
+    وأوقف تحميله <b>قبل</b> وصول أي بيانات إليه.
   </p>
+  <p class="wall-line" id="wallLine">…</p>
 
   <div class="target-box">
     <span class="lbl">الرابط المحجوب:</span>
@@ -27,6 +28,11 @@
   <div class="panel">
     <h2>أسباب التحذير</h2>
     <ul id="reasons"></ul>
+  </div>
+
+  <div class="panel cmp-panel" id="comparePanel" style="display:none">
+    <h2>⚖️ المقارنة مع الموقع الرسمي</h2>
+    <div id="cmpBody"></div>
   </div>
 
   <div class="advice">
