@@ -7,8 +7,11 @@
  * أثناء العمل، ويُعاد بناؤه تلقائياً بعد أي إعادة نشر.
  *
  * متغيرات البيئة:
- *   PCS_AI_ENDPOINT  رابط طبقة الذكاء الاصطناعي السياقي (اختياري — المرحلة 3)
- *   PCS_AI_KEY       مفتاح المصادقة للطبقة أعلاه (اختياري)
+ *   GEMINI_API_KEY     مفتاح Google AI Studio — يفعّل طبقة التحليل الذكي (Gemini) فوق المحرك المحلي
+ *   PCS_GEMINI_MODEL   اسم النموذج (اختياري — الافتراضي gemini-2.5-flash)
+ *   PCS_GEMINI_ENDPOINT تجاوز رابط Gemini (اختياري — للاختبار أو وسيط خاص)
+ *   PCS_AI_ENDPOINT    رابط طبقة ذكاء اصطناعي عامة (اختياري — تُستخدم فقط إن لم يوجد مفتاح Gemini)
+ *   PCS_AI_KEY         مفتاح المصادقة للطبقة العامة أعلاه (اختياري)
  */
 const ENGINE = require('./engine.js');
 
@@ -63,8 +66,93 @@ function normalizeSource(s) {
   return allowed.indexOf(s) !== -1 ? s : 'direct';
 }
 
-/* المرحلة 3: طبقة الذكاء الاصطناعي السياقي — أي فشل فيها لا يعطل الفحص القاعدي */
-async function aiEvaluate(url, source, verdict) {
+/* ============ طبقة الذكاء الاصطناعي (Gemini) ============ */
+
+const GEMINI_TIMEOUT_MS = 9000;      // مهلة Gemini — أطول من ذلك يبقى الفحص المحلي وحده
+const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash';
+
+/* ردّ النموذج المفترض JSON فقط، لكن ننزع أي أسوار Markdown إن التفّت */
+function parseGeminiJson(raw) {
+  const text = String(raw || '').trim()
+    .replace(/^```(?:json)?/i, '')
+    .replace(/```$/, '')
+    .trim();
+  try { return JSON.parse(text); } catch (e) { return null; }
+}
+
+/*
+ * geminiEvaluate — المحلل الذكي السياقي المتخصص بالخليج (انتحال بنوك، Typosquatting، Homoglyphs).
+ * يستقبل نتيجة المحرك المحلي كسياق ليؤكدها أو يصححها، ويرد JSON عربي منظم.
+ * أي فشل (لا مفتاح / مهلة / خطأ HTTP / JSON غير صالح) يعيد null — والفحص المحلي يبقى هو الحكم الأساس.
+ */
+async function geminiEvaluate(url, source, verdict) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return null;
+  const model = process.env.PCS_GEMINI_MODEL || GEMINI_DEFAULT_MODEL;
+  const endpoint = process.env.PCS_GEMINI_ENDPOINT ||
+    ('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent');
+  const local = {
+    score: verdict.score,
+    level: verdict.levelText,
+    registrable: verdict.registrable || verdict.host || '',
+    top: verdict.reasons.slice(0, 5).map(r => r.text),
+    official: verdict.comparison ? verdict.comparison.officialHost : null
+  };
+  const prompt = [
+    'أنت محلل أمن سيبراني متخصص في كشف الروابط الخبيثة وانتحال الهوية (Phishing / Typosquatting) في العالم العربي والخليج.',
+    'لديك نتيجة فحص قواعد محلية أولية — أكّدها أو صحّحها بناءً على معرفتك بالنطاقات الرسمية للبنوك والجهات الحكومية في الإمارات والخليج.',
+    'افحص الرابط بدقة مع مراعاة مصدر وصوله للمستخدم:',
+    '- الرابط: ' + url,
+    '- مصدر الوصول: ' + source,
+    '- النتيجة المحلية الأولية: ' + JSON.stringify(local),
+    '',
+    'أعد النتيجة بصيغة JSON فقط بدون أي نص إضافي أو علامات Markdown، وبهذا الهيكل الدقيق:',
+    '{"verdict": "آمن أو مشبوه أو خطر",',
+    ' "score": رقم صحيح من 0 إلى 100 يمثل درجة الأمان (100 آمن تماماً، 0 خطر مؤكد),',
+    ' "reasons": ["سبب واضح ومختصر بالعربية 1", "سبب 2"],',
+    ' "official_domain": "النطاق الرسمي الحقيقي إذا كان الرابط ينتحل جهة معروفة، وإلا null",',
+    ' "display": "سطر واحد واضح بالعربية يبدأ برمز الحالة (🟢 أو 🟡 أو 🔴) ثم الدرجة من 100 ثم أهم سبب"}'
+  ].join('\n');
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), GEMINI_TIMEOUT_MS);
+    const r = await fetch(endpoint + '?key=' + encodeURIComponent(key), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: ctl.signal,
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.1, responseMimeType: 'application/json' }
+      })
+    });
+    clearTimeout(t);
+    if (!r.ok) return null;
+    const data = await r.json();
+    const parsed = parseGeminiJson(data && data.candidates && data.candidates[0] &&
+      data.candidates[0].content && data.candidates[0].content.parts &&
+      data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text);
+    if (!parsed) return null;
+    /* score عند النموذج «درجة أمان» بينما نظامنا «درجة خطر» — نحوّل ونحرس التناقض بكلمة الحكم */
+    const safety = (typeof parsed.score === 'number') ? Math.max(0, Math.min(100, parsed.score)) : 50;
+    let risk = 100 - safety;
+    const word = String(parsed.verdict || '');
+    if (word.indexOf('خطر') !== -1) risk = Math.max(risk, 60);
+    else if (word.indexOf('مشبوه') !== -1) risk = Math.max(risk, 30);
+    else if (word.indexOf('آمن') !== -1 || word.indexOf('أمن') !== -1) risk = Math.min(risk, 29);
+    return {
+      provider: 'gemini',
+      risk: Math.max(0, Math.min(100, risk)),
+      reasons: (Array.isArray(parsed.reasons) ? parsed.reasons : [])
+        .filter(x => typeof x === 'string' && x).slice(0, 3),
+      officialDomain: (typeof parsed.official_domain === 'string' &&
+        parsed.official_domain && parsed.official_domain !== 'null') ? parsed.official_domain : null,
+      display: (typeof parsed.display === 'string' && parsed.display) ? parsed.display : null
+    };
+  } catch (e) { return null; }
+}
+
+/* المرحلة 3: طبقة AI عامة (اختيارية) — تُستخدم فقط إن لم يُضبط مفتاح Gemini */
+async function genericAiEvaluate(url, source, verdict) {
   const ep = process.env.PCS_AI_ENDPOINT;
   if (!ep) return null;
   try {
@@ -81,30 +169,52 @@ async function aiEvaluate(url, source, verdict) {
     clearTimeout(t);
     if (!r.ok) return null;
     const j = await r.json();
-    if (j && (typeof j.adjust === 'number' || typeof j.score === 'number')) return j;
+    if (j && (typeof j.adjust === 'number' || typeof j.score === 'number')) {
+      return {
+        provider: 'generic',
+        adjust: (typeof j.adjust === 'number') ? j.adjust : (j.score - verdict.score),
+        reason: j.reason || null
+      };
+    }
     return null;
   } catch (e) { return null; }
 }
 
+async function aiEvaluate(url, source, verdict) {
+  if (process.env.GEMINI_API_KEY) return geminiEvaluate(url, source, verdict);
+  return genericAiEvaluate(url, source, verdict);
+}
+
 function applyAi(verdict, ai) {
   if (!ai) return verdict;
-  const adjust = typeof ai.adjust === 'number'
-    ? ai.adjust
-    : (typeof ai.score === 'number' ? ai.score - verdict.score : 0);
-  let score = Math.max(0, Math.min(100, verdict.score + adjust));
+  let score, aiText, aiCode;
+  if (ai.provider === 'gemini') {
+    /* التحفظ: الأسوأ بين نتيجة القواعد المحلية والتحليل الذكي هو الحكم النهائي —
+       المحرك المحلي يلتقط انتحال الجهات الموثقة فوراً، وGemini يضيف طبقة معرفية فوقه، ولا أحدهما يخفض الآخر. */
+    score = Math.max(0, Math.min(100, Math.max(verdict.score, ai.risk)));
+    aiText = '🤖 تحليل ذكي (Gemini): ' +
+      (ai.reasons.length ? ai.reasons.join('؛ ') :
+        (ai.risk >= 60 ? 'خطر مرتفع' : ai.risk >= 30 ? 'يستوجب الحذر' : 'لا مؤشرات خبيثة')) +
+      ' — درجة الخطر الذكية ' + ai.risk + '/100';
+    aiCode = 'AI_GEMINI';
+  } else {
+    score = Math.max(0, Math.min(100, verdict.score + ai.adjust));
+    aiText = (ai.reason || 'تعديل طبقة الذكاء الاصطناعي السياقي') + ' (' + (ai.adjust >= 0 ? '+' : '') + ai.adjust + ')';
+    aiCode = 'AI';
+  }
   let level, levelText;
   if (score >= ENGINE.data.config.blockThreshold) { level = 'danger'; levelText = 'خطر'; }
   else if (score > ENGINE.data.config.safeMax) { level = 'caution'; levelText = 'مشبوه'; }
   else { level = 'safe'; levelText = 'آمن'; }
   const reasons = verdict.reasons.slice();
-  reasons.push({
-    code: 'AI',
-    text: (ai.reason || 'تعديل طبقة الذكاء الاصطناعي السياقي') +
-      ' (' + (adjust >= 0 ? '+' : '') + adjust + ')',
-    weight: adjust
-  });
+  reasons.push({ code: aiCode, text: aiText, weight: score - verdict.score });
+  if (ai.provider === 'gemini' && ai.officialDomain && !verdict.comparison) {
+    reasons.push({ code: 'AI_OFFICIAL', text: '🤖 النطاق الرسمي المحتمل للجهة المنتحلة: ' + ai.officialDomain, weight: 0 });
+  }
   reasons.sort((a, b) => b.weight - a.weight);
-  return Object.assign({}, verdict, { score, level, levelText, reasons, ai: true });
+  const out = Object.assign({}, verdict, { score, level, levelText, reasons, ai: true, aiProvider: ai.provider });
+  if (ai.provider === 'gemini' && ai.officialDomain) out.aiOfficialDomain = ai.officialDomain;
+  return out;
 }
 
 /* ============ المعالجات ============ */
@@ -123,7 +233,8 @@ async function scan(urlParam, source) {
     score: final.score,
     level: final.level,
     source: src,
-    ai: Boolean(ai)
+    ai: Boolean(ai),
+    aiProvider: ai ? ai.provider : null
   });
   if (scanlog.length > LOG_CAP) scanlog.splice(0, scanlog.length - LOG_CAP);
   return {
@@ -134,6 +245,12 @@ async function scan(urlParam, source) {
       source: src,
       verdict: final,
       display: ENGINE.buildDisplay(final),
+      /* حقول مسطّحة للتوافق مع أي مستهلك يقرأ الحكم مباشرة — دون كسر عقد verdict الكامل */
+      classification: final.levelText,
+      safety_score: 100 - final.score,
+      official_domain: final.aiOfficialDomain ||
+        (final.comparison ? final.comparison.officialHost : null),
+      ai: { used: Boolean(ai), provider: ai ? ai.provider : null },
       timing: { ms: Date.now() - t0 }
     }
   };
@@ -209,7 +326,11 @@ function health() {
       uptimeSec: Math.round((Date.now() - START) / 1000),
       scans: scanlog.length,
       reports: reports.length,
-      aiHook: Boolean(process.env.PCS_AI_ENDPOINT)
+      aiHook: Boolean(process.env.PCS_AI_ENDPOINT || process.env.GEMINI_API_KEY),
+      aiProviders: {
+        gemini: Boolean(process.env.GEMINI_API_KEY),
+        generic: Boolean(process.env.PCS_AI_ENDPOINT)
+      }
     }
   };
 }
