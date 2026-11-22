@@ -126,12 +126,12 @@ async function geminiEvaluate(url, source, verdict) {
       })
     });
     clearTimeout(t);
-    if (!r.ok) return null;
+    if (!r.ok) return { failed: true, error: 'http_' + r.status };
     const data = await r.json();
     const parsed = parseGeminiJson(data && data.candidates && data.candidates[0] &&
       data.candidates[0].content && data.candidates[0].content.parts &&
       data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text);
-    if (!parsed) return null;
+    if (!parsed) return { failed: true, error: 'bad_json' };
     /* score عند النموذج «درجة أمان» بينما نظامنا «درجة خطر» — نحوّل ونحرس التناقض بكلمة الحكم */
     const safety = (typeof parsed.score === 'number') ? Math.max(0, Math.min(100, parsed.score)) : 50;
     let risk = 100 - safety;
@@ -148,7 +148,9 @@ async function geminiEvaluate(url, source, verdict) {
         parsed.official_domain && parsed.official_domain !== 'null') ? parsed.official_domain : null,
       display: (typeof parsed.display === 'string' && parsed.display) ? parsed.display : null
     };
-  } catch (e) { return null; }
+  } catch (e) {
+    return { failed: true, error: (e && e.name === 'AbortError') ? 'timeout' : 'network' };
+  }
 }
 
 /* المرحلة 3: طبقة AI عامة (اختيارية) — تُستخدم فقط إن لم يُضبط مفتاح Gemini */
@@ -186,7 +188,7 @@ async function aiEvaluate(url, source, verdict) {
 }
 
 function applyAi(verdict, ai) {
-  if (!ai) return verdict;
+  if (!ai || ai.failed) return verdict;
   let score, aiText, aiCode;
   if (ai.provider === 'gemini') {
     /* التحفظ: الأسوأ بين نتيجة القواعد المحلية والتحليل الذكي هو الحكم النهائي —
@@ -217,6 +219,14 @@ function applyAi(verdict, ai) {
   return out;
 }
 
+/* حالة الطبقة الذكية للاستجابة — attempted: الإعداد موجود في الخادم، error: رمز تشخيص آمن بلا تفاصيل حساسة */
+function aiInfoOf(ai) {
+  const attempted = Boolean(process.env.GEMINI_API_KEY || process.env.PCS_AI_ENDPOINT);
+  if (!ai) return { used: false, provider: null, attempted, error: null };
+  if (ai.failed) return { used: false, provider: null, attempted, error: ai.error };
+  return { used: true, provider: ai.provider, attempted: true, error: null };
+}
+
 /* ============ المعالجات ============ */
 
 async function scan(urlParam, source) {
@@ -233,8 +243,8 @@ async function scan(urlParam, source) {
     score: final.score,
     level: final.level,
     source: src,
-    ai: Boolean(ai),
-    aiProvider: ai ? ai.provider : null
+    ai: Boolean(ai && !ai.failed),
+    aiProvider: (ai && !ai.failed) ? ai.provider : null
   });
   if (scanlog.length > LOG_CAP) scanlog.splice(0, scanlog.length - LOG_CAP);
   return {
@@ -250,7 +260,7 @@ async function scan(urlParam, source) {
       safety_score: 100 - final.score,
       official_domain: final.aiOfficialDomain ||
         (final.comparison ? final.comparison.officialHost : null),
-      ai: { used: Boolean(ai), provider: ai ? ai.provider : null },
+      ai: aiInfoOf(ai),
       timing: { ms: Date.now() - t0 }
     }
   };
