@@ -162,3 +162,4 @@ loadStats();
 loadSettings();
 bindSettings();
 bindManual();
+
