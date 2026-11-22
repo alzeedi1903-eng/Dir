@@ -1,6 +1,6 @@
 'use strict';
 /*
- * درع الاحتيال — المنطق المشترك لدوال Vercel الخادمية (بدون أي مكتبات خارجية)
+ * حصن (Hisn) — المنطق المشترك لدوال Vercel الخادمية (بدون أي مكتبات خارجية)
  *
  * الفحص نفسه عديم الحالة (دوال نقية فوق المحرك)، وسجل الفحوصات/البلاغات
  * يُحفظ في ذاكرة كل نسخة دالة (ephemeral) — يكفي لتجميع مؤشرات التهديدات
@@ -111,6 +111,7 @@ function applyAi(verdict, ai) {
 
 async function scan(urlParam, source) {
   if (!urlParam) return { status: 400, body: { ok: false, error: 'missing url parameter' } };
+  const t0 = Date.now();
   const src = normalizeSource(source);
   const verdict = ENGINE.analyze(urlParam, { source: src });
   const ai = await aiEvaluate(urlParam, src, verdict);
@@ -129,10 +130,11 @@ async function scan(urlParam, source) {
     status: 200,
     body: {
       ok: true,
-      engine: 'pcs-engine@' + ENGINE.version,
+      engine: 'hisn-engine@' + ENGINE.version,
       source: src,
       verdict: final,
-      display: ENGINE.buildDisplay(final)
+      display: ENGINE.buildDisplay(final),
+      timing: { ms: Date.now() - t0 }
     }
   };
 }
@@ -176,7 +178,7 @@ function threats() {
     status: 200,
     body: {
       ok: true,
-      generator: 'fraud-shield-api@' + ENGINE.version,
+      generator: 'hisn-api@' + ENGINE.version,
       generatedAt: new Date().toISOString(),
       note: 'التجميع من ذاكرة هذه النسخة من الدالة (يُعاد بناؤه بعد إعادة النشر)',
       stats: {
@@ -202,7 +204,7 @@ function health() {
     status: 200,
     body: {
       ok: true,
-      service: 'fraud-shield-api',
+      service: 'hisn-api',
       version: ENGINE.version,
       uptimeSec: Math.round((Date.now() - START) / 1000),
       scans: scanlog.length,
