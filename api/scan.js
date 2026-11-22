@@ -13,6 +13,8 @@ module.exports = async (req, res) => {
     url = req.body.url;
     source = req.body.source || source;
   }
-  const out = await core.scan(url, source);
+  const fmt = (req.query && req.query.format) || (req.body && req.body.format) || '';
+  const out = await core.scan(url, source, fmt);
+  if (out.textResponse) return core.send(res, out.status, out.body, 'text/plain; charset=utf-8');
   return core.send(res, out.status, out.body);
 };
