@@ -1,4 +1,4 @@
-/* درع السياق الاستباقي — Popup logic */
+/* حصن (Hisn) — Popup logic */
 'use strict';
 
 const $ = id => document.getElementById(id);
@@ -69,6 +69,7 @@ async function loadSettings() {
   const s = await send({ type: 'getSettings' });
   if (!s) return;
   $('setBlocking').checked = !!s.blocking;
+  $('setHardWall').checked = !!s.hardWall;
   $('setScanSearch').checked = !!s.scanSearch;
   $('setCloud').checked = !!s.useCloud;
   $('cloudEndpoint').value = s.cloudEndpoint || '';
@@ -81,6 +82,9 @@ async function bindSettings() {
   $('setBlocking').addEventListener('change', async e => {
     await send({ type: 'setSettings', patch: { blocking: e.target.checked } });
     loadSettings();
+  });
+  $('setHardWall').addEventListener('change', e => {
+    send({ type: 'setSettings', patch: { hardWall: e.target.checked } });
   });
   $('setScanSearch').addEventListener('change', e => {
     send({ type: 'setSettings', patch: { scanSearch: e.target.checked } });
