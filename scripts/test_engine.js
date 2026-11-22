@@ -221,3 +221,4 @@ if (failed) {
   console.error('فشل ' + failed + ' اختباراً');
   process.exit(1);
 }
+
