@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>درع الاحتيال — افحص أي رابط قبل أن تخدعك</title>
-<meta name="description" content="افحص الروابط الاحتيالية قبل فتحها: أضف الفحص إلى تطبيق الاختصارات في آيفون مرة واحدة، أو ثبّت إضافة كروم — حماية فورية من مواقع البنوك المقلدة ورموز OTP الوهمية.">
+<title>حصن — افحص أي رابط قبل أن تخدعك</title>
+<meta name="description" content="حصن: جدار فحص تلقائي بينك وبين الروابط الاحتيالية — مقارنة فورية بين الرابط المشبوه والموقع الرسمي، وإضافة كروم تحجب الخطر قبل فتحه، واختصارات آيفون تفحص من أي تطبيق.">
 <meta name="theme-color" content="#0a0f1e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -95,6 +95,30 @@ ul.reasons { margin: 14px 0 0; padding: 0; list-style: none; }
 ul.reasons li { font-size: 13px; line-height: 1.6; margin: 6px 0; background: var(--card2); border-inline-start: 3px solid #94a3b8; border-radius: 8px; padding: 8px 12px; color: #cdd9ee; }
 .actions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
 
+/* ===== المقارنة الفورية + زمن الفحص ===== */
+.timing { font-size: 11.5px; color: var(--dim); margin-top: 10px; }
+.cmp { margin-top: 14px; background: var(--card2); border: 1px solid var(--line); border-radius: 12px; padding: 14px; }
+.cmp-title { font-size: 14px; font-weight: 700; margin-bottom: 8px; }
+.cmp-row { display: flex; align-items: center; gap: 8px; margin: 7px 0; flex-wrap: wrap; }
+.cmp-tag { font-size: 12px; font-weight: 700; flex: 0 0 auto; }
+.cmp-bad .cmp-tag { color: #f87171; }
+.cmp-good .cmp-tag { color: #4ade80; }
+.cmp-host {
+  direction: ltr; unicode-bidi: embed; flex: 1; min-width: 200px;
+  font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; color: var(--txt);
+  background: #0a1226; border: 1px solid var(--line); border-radius: 8px;
+  padding: 6px 10px; overflow-wrap: anywhere;
+}
+.cmp-host mark { background: #dc2626; color: #fff; border-radius: 4px; padding: 0 3px; }
+.cmp-good .cmp-host mark { background: #16a34a; }
+.cmp-info { font-size: 12px; color: var(--dim); line-height: 1.9; margin-top: 8px; }
+.cmp-go {
+  display: inline-block; margin-top: 8px; font-size: 13px; font-weight: 700; color: #4ade80;
+  border: 1px solid #16a34a66; background: #16a34a14; border-radius: 10px;
+  padding: 8px 14px; text-decoration: none; direction: ltr; unicode-bidi: embed;
+}
+.cmp-go:hover { background: #16a34a28; }
+
 /* ===== السجل ===== */
 .hist { display: none; }
 .hist.show { display: block; }
@@ -145,8 +169,8 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
 
 <header>
   <div class="hbar">
-    <div class="logo">🛡️</div>
-    <b>درع الاحتيال<small>فحص الروابط قبل أن تخدعك</small></b>
+    <div class="logo">🏰</div>
+    <b>حصن<small>جدار الفحص بينك وبين الروابط الخطر</small></b>
   </div>
 </header>
 
@@ -196,6 +220,13 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
       </div>
     </div>
     <ul class="reasons" id="reasons"></ul>
+    <div class="timing" id="timingLine"></div>
+    <div class="cmp" id="compareCard" style="display:none">
+      <div class="cmp-title">⚖️ المقارنة الفورية: الرابط المشبوه مقابل الموقع الرسمي</div>
+      <div id="cmpRows"></div>
+      <div class="cmp-info" id="cmpInfo"></div>
+      <a id="cmpLink" class="cmp-go" target="_blank" rel="noopener noreferrer"></a>
+    </div>
     <div class="actions">
       <button class="ghost" id="reportBtn">🚩 الإبلاغ عن هذا الرابط</button>
       <button class="ghost" id="againBtn">فحص رابط آخر</button>
@@ -298,10 +329,10 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
 
   <!-- إضافة كروم -->
   <section class="card" id="chrome">
-    <h2>🧩 الإضافة في متصفح Google Chrome</h2>
-    <p class="sub">حماية استباقية داخل المتصفح: وسم نتائج البحث بشارات ملونة، وحجب الروابط الخطر قبل فتحها، واعتراض نماذج البطاقة ورمز التحقق OTP.</p>
+    <h2>🧩 الإضافة في متصفح Google Chrome — الجدار التلقائي</h2>
+    <p class="sub">جدار فحص يقع بين نقرتك وفتح الموقع: أي رابط يُفحص قبل اكتمال تحميله — حتى لو فتحته من تطبيق خارجي أو رسالة أو إعادة توجيه — وكل نطاق خطر يُكتشف يدخل «الجدار الصلب»: حجب فوري على مستوى الشبكة لأي محاولة وصول لاحقة.</p>
     <ol class="olite">
-      <li>نزّل مستودع <b>fraud-shield</b> من GitHub (زر <b>Code</b> ← Download ZIP) وفك الضغط.</li>
+      <li>نزّل مستودع <b>hisn</b> من GitHub (زر <b>Code</b> ← Download ZIP) وفك الضغط.</li>
       <li>افتح <code>chrome://extensions</code> وفعّل <b>وضع المطوّر</b> (Developer mode).</li>
       <li>اضغط <b>Load unpacked</b> واختر مجلد <code>extension</code>.</li>
       <li>اختياري: من إعدادات الإضافة فعّل <b>الخادم السحابي</b> والصق رابط هذا الموقع — يدمج الفحص السحابي مع المحلي.</li>
@@ -313,13 +344,15 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
     <ol class="olite">
       <li><b>الالتقاط السياقي:</b> النطاق + مصدر الرابط (بحث / خريطة / رسالة) يدخل في التقييم.</li>
       <li><b>فحص متعدد الطبقات:</b> انتحال أسماء الجهات، Typosquatting، الحروف المتشابهة بصرياً، المختصرات، الكلمات الخطرة، وصفحات OTP.</li>
+      <li><b>المقارنة الفورية:</b> عند اكتشاف انتحال يُعرض الرابط المشبوه مقابل الموقع الرسمي حرفاً بحرف — الجزء المزيَّف مضاءً بالأحمر والرسمي بالأخضر، مع زر مباشر للموقع الرسمي.</li>
+      <li><b>الجدار التلقائي:</b> الفحص يقع بين نقرة المستخدم وفتح الموقع، والنطاقات الخطرة تُضاف إلى جدار صلب يحجبها قبل أي تحميل لاحق — من أي مصدر.</li>
       <li><b>حكم فوري:</b> درجة من 100 مع أسباب مكتوبة بلغة بسيطة، وبلاغ يدعم قاعدة مؤشرات التهديدات.</li>
     </ol>
   </section>
 
   <footer>
     الفحص القاعدي يعمل بقواعد محلية على الخادم دون تخزين بيانات شخصية.<br>
-    درع الاحتيال — حماية من الروابط الاحتيالية · iOS Shortcuts + Chrome Extension
+    حصن — جدار فحص بينك وبين الروابط الاحتيالية · iOS Shortcuts + Chrome Extension
   </footer>
 </div>
 
@@ -427,6 +460,45 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
         (r.weight > 0 ? ' (+' + r.weight + ')' : '');
       ul.appendChild(li);
     });
+
+    var cmp = v.comparison;
+    var card = $('compareCard');
+    if (cmp) {
+      card.style.display = 'block';
+      var rows = $('cmpRows');
+      rows.innerHTML = '';
+      function cmpRow(label, prefix, mid, suffix, cls) {
+        var d = document.createElement('div');
+        d.className = 'cmp-row ' + cls;
+        var t = document.createElement('span');
+        t.className = 'cmp-tag';
+        t.textContent = label;
+        var c = document.createElement('code');
+        c.className = 'cmp-host';
+        c.appendChild(document.createTextNode(prefix));
+        if (mid) {
+          var m = document.createElement('mark');
+          m.textContent = mid;
+          c.appendChild(m);
+        }
+        c.appendChild(document.createTextNode(suffix));
+        d.appendChild(t);
+        d.appendChild(c);
+        rows.appendChild(d);
+      }
+      cmpRow('المشبوه:', cmp.diff.prefix, cmp.diff.fakeMid, cmp.diff.suffix, 'cmp-bad');
+      cmpRow('الرسمي:', cmp.diff.prefix, cmp.diff.officialMid, cmp.diff.suffix, 'cmp-good');
+      var go = $('cmpLink');
+      go.href = cmp.officialUrl;
+      go.textContent = 'افتح الموقع الرسمي الصحيح ↗ ' + cmp.officialHost;
+      $('cmpInfo').textContent = 'الجهة المنتحلة: ' + cmp.entity + ' — نمط الانتحال: ' + cmp.kindText +
+        (cmp.distance != null ? ' — بفارق ' + cmp.distance + ' حرف فقط' : '') +
+        (cmp.substituted && cmp.substituted.length
+          ? ' — حروف مُستبدلة: ' + cmp.substituted.map(function (s) { return s.from + '←' + s.to; }).join('، ')
+          : '');
+    } else {
+      card.style.display = 'none';
+    }
     $('verdict').classList.add('show');
     pushHist(v);
   }
@@ -435,6 +507,7 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
     $('err').style.display = 'none';
     $('loading').style.display = 'block';
     $('verdict').classList.remove('show');
+    $('compareCard').style.display = 'none';
     fetch(ORIGIN + '/api/scan?url=' + encodeURIComponent(url) + '&source=' + encodeURIComponent(source || 'direct'))
       .then(function (r) { return r.json(); })
       .then(function (j) {
@@ -445,6 +518,8 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
           return;
         }
         lastScan = j.verdict;
+        $('timingLine').textContent = (j.timing && typeof j.timing.ms === 'number')
+          ? '⚡ زمن الفحص: ' + j.timing.ms + ' مللي ثانية — فوري' : '';
         render(j.verdict);
       })
       .catch(function (e) {
