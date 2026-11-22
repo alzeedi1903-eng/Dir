@@ -1,13 +1,13 @@
 /*
- * درع السياق الاستباقي — قاعدة البيانات المحلية للفحص
- * Proactive Context Shield — local rules data (offline, privacy-first)
+ * حصن (Hisn) — قاعدة البيانات المحلية للفحص
+ * Hisn — local rules data (offline, privacy-first)
  * تُحمَّل قبل engine.js في كل من: Service Worker و Content Scripts واختبارات Node
  */
 (function (root) {
   'use strict';
 
   var PCS_DATA = {
-    version: '1.0.0',
+    version: '2.0.0',
 
     /*
      * الجهات المحمية: نطاقات رسمية موثقة (الإمارات).
