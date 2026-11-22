@@ -116,3 +116,4 @@ $('continueBtn').addEventListener('click', async () => {
   await send({ type: 'allowOnce', url: target });
   try { location.replace(target); } catch (e) { location.href = target; }
 });
+
