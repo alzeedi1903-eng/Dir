@@ -74,6 +74,31 @@ header h1 { font-size: 15px; margin: 0; }
 #reasons li.r-info { border-color: #64748b; background: #f8fafc; }
 .actions { display: flex; gap: 8px; margin-top: 8px; }
 
+/* ===== المقارنة الفورية مع الموقع الرسمي ===== */
+.cmp {
+  margin-top: 10px; border: 1px solid #e2e8f0; border-radius: 10px;
+  background: #f8fafc; padding: 10px 12px;
+}
+.cmp-title { font-size: 12px; font-weight: 700; color: #0b2447; margin-bottom: 6px; }
+.cmp-row { display: flex; align-items: center; gap: 8px; margin: 5px 0; }
+.cmp-tag { flex: 0 0 auto; font-size: 11px; font-weight: 700; color: #b91c1c; }
+.cmp-row.cmp-good .cmp-tag { color: #15803d; }
+.cmp-host {
+  direction: ltr; unicode-bidi: embed; flex: 1; min-width: 0;
+  font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: #1f2937;
+  background: #fff; border: 1px solid #e2e8f0; border-radius: 6px;
+  padding: 4px 8px; overflow-wrap: anywhere;
+}
+.cmp-host mark { background: #dc2626; color: #fff; border-radius: 3px; padding: 0 3px; }
+.cmp-good .cmp-host mark { background: #16a34a; }
+.cmp-go {
+  display: inline-block; margin-top: 8px; font-size: 11.5px; font-weight: 700; color: #15803d;
+  border: 1px solid #16a34a66; background: #f0fdf4; border-radius: 8px;
+  padding: 6px 12px; text-decoration: none; direction: ltr; unicode-bidi: embed;
+  overflow-wrap: anywhere;
+}
+.cmp-go:hover { background: #dcfce7; }
+
 /* الإحصاءات */
 .stats { display: flex; gap: 6px; margin: 10px 12px; }
 .stat {
