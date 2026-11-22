@@ -166,6 +166,15 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
   .gauge { width: 68px; height: 68px; }
   .gauge .hole { width: 50px; height: 50px; font-size: 16px; }
 }
+  /* بطاقة التثبيت بنقرة واحدة (iOS) */
+  .onetap { border: 1px solid #16a34a66; background: #16a34a14; border-radius: 14px; padding: 14px 16px; margin-top: 6px; }
+  .tapbtns { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 8px; }
+  .tapbtn { flex: 1 1 240px; display: block; text-align: center; padding: 13px 16px; border-radius: 12px; border: 1px solid var(--green); color: #86efac; text-decoration: none; font-weight: 700; font-size: 15px; }
+  .tapbtn.main { background: var(--green); color: #f0fdf4; font-size: 16px; }
+  .tapbtn:active { transform: scale(.98); }
+  .manual summary { cursor: pointer; font-weight: 700; color: #bbf7d0; padding: 8px 0; }
+  #untrustNote, #deskNote { display: none; }
+  #shortcut.ios .onetap { border-color: var(--green); box-shadow: 0 0 14px #16a34a22; }
 </style>
 </head>
 <body>
@@ -250,78 +259,94 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
 
   <!-- الفحص التلقائي من الهاتف -->
   <section class="card" id="shortcut">
-    <h2>📱 الفحص التلقائي من الهاتف — إعداد لمرة واحدة فقط</h2>
-    <p class="sub">بعد هذا الإعداد يفحص النظام الروابط من أي تطبيق دون دخول هذا الموقع، ويعرض رسالة فورية بنوع الرابط وحالته. يقوم iOS بطلب الأذونات تلقائياً عند أول استخدام (قراءة الحافظة / صلاحيات Safari).</p>
+    <h2>📱 الفحص التلقائي من الهاتف — تثبيت بنقرة واحدة</h2>
+    <p class="sub">اضغط زر التثبيت ← ينتقل النظام فوراً إلى تطبيق «الاختصارات» على هاتفك ← اضغط «إضافة الاختصار» — وينتهي التثبيت. من بعدها يفحص أي رابط من أي تطبيق ويعرض النتيجة فوراً، دون فتح هذا الموقع مجدداً.</p>
 
-    <div class="once">⚡ انسخ رابط الفحص أدناه مرة واحدة ← أنشئ الاختصار ← لن تحتاج الموقع مجدداً.</div>
-
-    <p class="sub" style="margin-bottom:6px">رابط الفحص (يستخدم عنوان هذا الموقع تلقائياً):</p>
-    <div class="urlbox">
-      <code id="apiUrl">…</code>
-      <button class="ghost" id="copyApi">نسخ</button>
+    <div class="onetap" id="oneTapBox">
+      <span class="badge rec">بنقرة واحدة — من هذه الصفحة إلى تطبيق الاختصارات مباشرة</span>
+      <div class="tapbtns">
+        <a class="tapbtn main" id="installClip" href="#">📲 تثبيت «فحص الحافظة» فوراً</a>
+        <a class="tapbtn" id="installShare" href="#">🔗 تثبيت «فحص من المشاركة»</a>
+      </div>
+      <p class="note"><b>الاستخدام بعد التثبيت:</b> انسخ أي رابط مشبوه من أي تطبيق ← شغّل «حصن» من الشاشة الرئيسية أو Siri ← تظهر النتيجة فوراً. أو زر المشاركة في أي تطبيق ← «حصن — فحص المشاركة». يقوم iOS بطلب الأذونات تلقائياً عند أول استخدام (قراءة الحافظة).</p>
+      <p class="note" id="untrustNote">إن لم يستورد iOS الملف: <b>الإعدادات ← الاختصارات ← شغّل «السماح بالاختصارات غير الموثوقة»</b> (يظهر الخيار بعد تشغيل أي اختصار مرة واحدة) ثم اضغط زر التثبيت من جديد.</p>
+      <p class="note" id="deskNote">💻 أنت تتصفح من حاسوب — افتح هذا الموقع على الآيفون ثم اضغط زر التثبيت، فينتقل بك النظام مباشرة إلى تطبيق الاختصارات لإكمال الإعداد.</p>
     </div>
 
-    <!-- الوصفة 1: الحافظة + اللمس الخلفي -->
     <div style="margin-top:16px">
-      <span class="badge rec">الأقرب للتلقائي — انسخ الرابط ثم اضغط مرتين على خلف الهاتف</span>
+      <span class="badge alt">تفعيل إضافي اختياري — اللمس الخلفي: نقرة مزدوجة على خلف الهاتف تفحص الحافظة</span>
       <ol class="steps">
-        <li>افتح تطبيق <b>الاختصارات</b> (Shortcuts) ← زر <b>+</b>.</li>
-        <li>أضف إجراء <b>الحصول على الحافظة</b> (Get Clipboard).</li>
-        <li>أضف إجراء <b>ترميز URL</b> (URL Encode) واضبط مدخلاته على <b>الحافظة</b>.</li>
-        <li>أضف إجراء <b>نص</b> (Text): الصق رابط الفحص المنسوخ أعلاه، ثم أدرج متغير <b>النص المشفّر</b> في نهايته.</li>
-        <li>أضف إجراء <b>الحصول على محتوى URL</b> (Get Contents of URL) واضبط العنوان على النص السابق.</li>
-        <li>أضف إجراء <b>الحصول على قيمة القاموس</b> (Get Dictionary Value) واكتب المفتاح: <code>display</code></li>
-        <li>أضف إجراء <b>إظهار إشعار</b> (Show Notification) بمحتوى النتيجة، وسمِّ الاختصار «فحص الحافظة».</li>
-        <li>التفعيل التلقائي: <b>الإعدادات ← إمكانية الوصول ← اللمس ← اللمس الخلفي (Back Tap) ← نقرة مزدوجة ← فحص الحافظة</b>.</li>
+        <li><b>الإعدادات ← إمكانية الوصول ← اللمس ← اللمس الخلفي (Back Tap)</b>.</li>
+        <li>اختر <b>نقرة مزدوجة</b> ← قائمة الاختصارات ← <b>حصن — فحص الحافظة</b>.</li>
+        <li>من أي تطبيق: ضغطة مطوّلة على الرابط ← نسخ ← اضغط مرتين على خلف الهاتف ← النتيجة تظهر فوراً.</li>
       </ol>
-      <p class="note"><b>الاستخدام من أي تطبيق:</b> ضغطة مطوّلة على الرابط ← <b>نسخ</b> ← اضغط مرتين على خلف الهاتف ← يظهر الإشعار فوراً: 🟢 آمن / 🟡 مشبوه / 🔴 خطر + الدرجة والأسباب. في أول استخدام يطلب iOS الإذن بقراءة الحافظة — اختر «السماح».</p>
     </div>
 
-    <!-- الوصفة 2: ورقة المشاركة -->
-    <div style="margin-top:20px">
-      <span class="badge alt">من زر المشاركة في أي تطبيق — تنبيه فوري</span>
-      <ol class="steps">
-        <li>أنشئ اختصاراً جديداً واضغط زر <b>+</b>.</li>
-        <li>أضف إجراء <b>ترميز URL</b> (URL Encode) واضبط مدخلاته على <b>إدخال الاختصار</b> (Shortcut Input).</li>
-        <li>أضف إجراء <b>نص</b>: الصق رابط الفحص أعلاه + متغير <b>النص المشفّر</b> في نهايته.</li>
-        <li>أضف <b>الحصول على محتوى URL</b> على النص السابق.</li>
-        <li>أضف <b>الحصول على قيمة القاموس</b> بالمفتاح <code>display</code>.</li>
-        <li>أضف <b>إظهار تنبيه</b> (Show Alert) بالنتيجة، وفعّل <b>إظهار في ورقة المشاركة</b> بنوع <b>روابط URL</b>. سمِّه «فحص الرابط».</li>
-      </ol>
-      <p class="note"><b>الاستخدام:</b> زر المشاركة على أي رابط ← «فحص الرابط» ← تنبيه فوري بالحكم والأسباب.</p>
-    </div>
+    <!-- الطرق اليدوية البديلة -->
+    <details class="manual" style="margin-top:18px">
+      <summary>🛠️ الطريقة اليدوية الكاملة — بديل احتياطي إن لم يعمل التثبيت بنقرة واحدة</summary>
 
-    <!-- الوصفة 3: المفضلة الذكية -->
-    <div style="margin-top:20px">
-      <span class="badge alt">زر المفضلة الذكي في Safari — نقرة واحدة أثناء التصفح</span>
-      <p class="sub" style="margin-bottom:6px">انسخ هذا الكود:</p>
+      <p class="sub" style="margin-bottom:6px;margin-top:10px">رابط الفحص (يستخدم عنوان هذا الموقع تلقائياً):</p>
       <div class="urlbox">
-        <code id="bmCode">…</code>
-        <button class="ghost" id="copyBm">نسخ</button>
+        <code id="apiUrl">…</code>
+        <button class="ghost" id="copyApi">نسخ</button>
       </div>
-      <ol class="steps">
-        <li>في Safari أضف أي صفحة إلى <b>المفضلة</b> (زر المشاركة ← إضافة إلى المفضلة).</li>
-        <li>افتح المفضلة ← «تعديل» ← اضغط العنصر الجديد ← غيّر الاسم إلى <b>فحص هذا الرابط</b>.</li>
-        <li>امسح حقل الرابط والصق الكود المنسوخ أعلاه واحفظ.</li>
-        <li>أنت على أي صفحة؟ اضغط المفضلة ← تفتح صفحة النتيجة وتفحص الصفحة الحالية تلقائياً.</li>
-      </ol>
-    </div>
 
-    <!-- الوصفة 4: شاشة كاملة من المشاركة -->
-    <div style="margin-top:20px">
-      <span class="badge alt">بديل — شاشة نتيجة ملونة كاملة من المشاركة</span>
-      <p class="sub" style="margin-bottom:6px">انسخ رابط العرض المرئي:</p>
-      <div class="urlbox">
-        <code id="webUrl">…</code>
-        <button class="ghost" id="copyWeb">نسخ</button>
+      <div style="margin-top:16px">
+        <span class="badge rec">الأقرب للتلقائي — انسخ الرابط ثم اضغط مرتين على خلف الهاتف</span>
+        <ol class="steps">
+          <li>افتح تطبيق <b>الاختصارات</b> (Shortcuts) ← زر <b>+</b>.</li>
+          <li>أضف إجراء <b>الحصول على الحافظة</b> (Get Clipboard).</li>
+          <li>أضف إجراء <b>ترميز URL</b> (URL Encode) واضبط مدخلاته على <b>الحافظة</b>.</li>
+          <li>أضف إجراء <b>نص</b> (Text): الصق رابط الفحص المنسوخ أعلاه، ثم أدرج متغير <b>النص المشفّر</b> في نهايته.</li>
+          <li>أضف إجراء <b>الحصول على محتوى URL</b> (Get Contents of URL) واضبط العنوان على النص السابق.</li>
+          <li>أضف إجراء <b>إظهار النتيجة</b> (Show Result) أو <b>إظهار إشعار</b> (Show Notification) بمحتوى النتيجة، وسمِّ الاختصار «فحص الحافظة».</li>
+        </ol>
+        <p class="note"><b>الاستخدام من أي تطبيق:</b> ضغطة مطوّلة على الرابط ← <b>نسخ</b> ← شغّل الاختصار ← تظهر النتيجة فوراً: 🟢 آمن / 🟡 مشبوه / 🔴 خطر + الدرجة والأسباب.</p>
       </div>
-      <ol class="steps">
-        <li>أنشئ اختصاراً جديداً وفعّل <b>إظهار في ورقة المشاركة</b> بنوع <b>روابط URL</b>.</li>
-        <li>أضف إجراء <b>ترميز URL</b> على <b>إدخال الاختصار</b>.</li>
-        <li>أضف إجراء <b>نص</b>: الصق الرابط المنسوخ أعلاه + متغير <b>النص المشفّر</b> بعده.</li>
-        <li>أضف إجراء <b>فتح روابط</b> (Open URLs) — تفتح صفحة النتيجة وتُفحص تلقائياً.</li>
-      </ol>
-    </div>
+
+      <div style="margin-top:20px">
+        <span class="badge alt">من زر المشاركة في أي تطبيق — تنبيه فوري</span>
+        <ol class="steps">
+          <li>أنشئ اختصاراً جديداً وفعّل <b>إظهار في ورقة المشاركة</b> بنوع <b>روابط URL</b>.</li>
+          <li>أضف إجراء <b>ترميز URL</b> (URL Encode) واضبط مدخلاته على <b>إدخال الاختصار</b> (Shortcut Input).</li>
+          <li>أضف إجراء <b>نص</b>: الصق رابط الفحص أعلاه + متغير <b>النص المشفّر</b> في نهايته.</li>
+          <li>أضف <b>الحصول على محتوى URL</b> على النص السابق.</li>
+          <li>أضف <b>إظهار تنبيه</b> (Show Alert) بالنتيجة. سمِّه «فحص الرابط».</li>
+        </ol>
+        <p class="note"><b>الاستخدام:</b> زر المشاركة على أي رابط ← «فحص الرابط» ← تنبيه فوري بالحكم والأسباب.</p>
+      </div>
+
+      <div style="margin-top:20px">
+        <span class="badge alt">زر المفضلة الذكي في Safari — نقرة واحدة أثناء التصفح</span>
+        <p class="sub" style="margin-bottom:6px">انسخ هذا الكود:</p>
+        <div class="urlbox">
+          <code id="bmCode">…</code>
+          <button class="ghost" id="copyBm">نسخ</button>
+        </div>
+        <ol class="steps">
+          <li>في Safari أضف أي صفحة إلى <b>المفضلة</b> (زر المشاركة ← إضافة إلى المفضلة).</li>
+          <li>افتح المفضلة ← «تعديل» ← اضغط العنصر الجديد ← غيّر الاسم إلى <b>فحص هذا الرابط</b>.</li>
+          <li>امسح حقل الرابط والصق الكود المنسوخ أعلاه واحفظ.</li>
+          <li>أنت على أي صفحة؟ اضغط المفضلة ← تفتح صفحة النتيجة وتفحص الصفحة الحالية تلقائياً.</li>
+        </ol>
+      </div>
+
+      <div style="margin-top:20px">
+        <span class="badge alt">بديل — شاشة نتيجة ملونة كاملة من المشاركة</span>
+        <p class="sub" style="margin-bottom:6px">انسخ رابط العرض المرئي:</p>
+        <div class="urlbox">
+          <code id="webUrl">…</code>
+          <button class="ghost" id="copyWeb">نسخ</button>
+        </div>
+        <ol class="steps">
+          <li>أنشئ اختصاراً جديداً وفعّل <b>إظهار في ورقة المشاركة</b> بنوع <b>روابط URL</b>.</li>
+          <li>أضف إجراء <b>ترميز URL</b> على <b>إدخال الاختصار</b>.</li>
+          <li>أضف إجراء <b>نص</b>: الصق الرابط المنسوخ أعلاه + متغير <b>النص المشفّر</b> بعده.</li>
+          <li>أضف إجراء <b>فتح روابط</b> (Open URLs) — تفتح صفحة النتيجة وتُفحص تلقائياً.</li>
+        </ol>
+      </div>
+    </details>
 
     <!-- Safari التلقائي الكامل -->
     <div style="margin-top:20px">
@@ -379,7 +404,7 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
   var scanCtl = null;
 
   /* تعبئة روابط الوصفات بعنوان الموقع الفعلي */
-  $('apiUrl').textContent = ORIGIN + '/api/scan?url=';
+  $('apiUrl').textContent = ORIGIN + '/api/scan?source=clipboard&format=text&url=';
   $('webUrl').textContent = ORIGIN + '/?url=';
   $('bmCode').textContent = "javascript:location.href='" + ORIGIN + "/?url='+encodeURIComponent(location.href)+'&source=bookmark'";
 
@@ -407,6 +432,25 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
     }
   }
   $('copyApi').addEventListener('click', function () { copyText($('apiUrl').textContent, this); });
+
+  /* ═══ تثبيت iOS بنقرة واحدة: بناء روابط الاستيراد + تكييف البطاقة حسب الجهاز ═══ */
+  (function () {
+    const box = $('shortcut');
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const importLink = function (name) {
+      return 'shortcuts://import-shortcut?url=' +
+        encodeURIComponent(location.origin + '/shortcut/' + encodeURIComponent(name));
+    };
+    const clip = $('installClip'), share = $('installShare');
+    if (clip) clip.href = importLink('حصن-فحص-الحافظة.shortcut');
+    if (share) share.href = importLink('حصن-فحص-المشاركة.shortcut');
+    if (isIOS || location.search.indexOf('ios=1') !== -1) {
+      box.classList.add('ios');
+      $('untrustNote').style.display = 'block';
+      $('deskNote').style.display = 'none';
+    }
+  })();
   $('copyWeb').addEventListener('click', function () { copyText($('webUrl').textContent, this); });
   $('copyBm').addEventListener('click', function () { copyText($('bmCode').textContent, this); });
 
