@@ -68,8 +68,14 @@ function normalizeSource(s) {
 
 /* ============ طبقة الذكاء الاصطناعي (Gemini) ============ */
 
-const GEMINI_TIMEOUT_MS = 9000;      // مهلة Gemini — أطول من ذلك يبقى الفحص المحلي وحده
-const GEMINI_DEFAULT_MODEL = 'gemini-2.5-flash';
+const GEMINI_TIMEOUT_MS = 9000;      // مهلة كل محاولة — أطول من ذلك يبقى الفحص المحلي وحده
+const GEMINI_TOTAL_MS = 12000;       // سقف زمني كلي لكل السلسلة — حماية لزمن استجابة الفحص
+/* سلسلة النماذج (نوفمبر 2026): gemini-2.5-flash تقاعد ورد generateContent له 404 —
+   وجهته الرسمية gemini-3.5-flash-lite (الأسرع والأرخص)، وflash-latest اسم مستعار
+   يتبع أحدث إصدار مستقر تلقائياً. عند http_404 (نموذج غير متاح) تُجرَّب البدائل
+   بالترتيب، والناجح يثبَّت للطلبات اللاحقة على الحاوية نفسها. */
+const GEMINI_MODEL_CHAIN = ['gemini-3.5-flash-lite', 'gemini-flash-latest', 'gemini-3.8-flash', 'gemini-2.5-flash'];
+let geminiWorkingModel = null;
 
 /* ردّ النموذج المفترض JSON فقط، لكن ننزع أي أسوار Markdown إن التفّت */
 function parseGeminiJson(raw) {
@@ -88,9 +94,12 @@ function parseGeminiJson(raw) {
 async function geminiEvaluate(url, source, verdict) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
-  const model = process.env.PCS_GEMINI_MODEL || GEMINI_DEFAULT_MODEL;
-  const endpoint = process.env.PCS_GEMINI_ENDPOINT ||
-    ('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent');
+  const customEp = process.env.PCS_GEMINI_ENDPOINT;
+  const override = process.env.PCS_GEMINI_MODEL;
+  /* ترتيب المحاولات: نموذج نجح سابقاً على هذه الحاوية ← وإلا سلسلة البدائل.
+     تجاوز يدوي أو نقطة نهاية مخصصة = مرشح واحد بلا تنقل. */
+  const models = override ? [override]
+    : (geminiWorkingModel && !customEp ? [geminiWorkingModel] : GEMINI_MODEL_CHAIN);
   const local = {
     score: verdict.score,
     level: verdict.levelText,
@@ -113,44 +122,69 @@ async function geminiEvaluate(url, source, verdict) {
     ' "official_domain": "النطاق الرسمي الحقيقي إذا كان الرابط ينتحل جهة معروفة، وإلا null",',
     ' "display": "سطر واحد واضح بالعربية يبدأ برمز الحالة (🟢 أو 🟡 أو 🔴) ثم الدرجة من 100 ثم أهم سبب"}'
   ].join('\n');
-  try {
-    const ctl = new AbortController();
-    const t = setTimeout(() => ctl.abort(), GEMINI_TIMEOUT_MS);
-    const r = await fetch(endpoint + '?key=' + encodeURIComponent(key), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: ctl.signal,
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.1, responseMimeType: 'application/json' }
-      })
-    });
-    clearTimeout(t);
-    if (!r.ok) return { failed: true, error: 'http_' + r.status };
-    const data = await r.json();
-    const parsed = parseGeminiJson(data && data.candidates && data.candidates[0] &&
-      data.candidates[0].content && data.candidates[0].content.parts &&
-      data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text);
-    if (!parsed) return { failed: true, error: 'bad_json' };
-    /* score عند النموذج «درجة أمان» بينما نظامنا «درجة خطر» — نحوّل ونحرس التناقض بكلمة الحكم */
-    const safety = (typeof parsed.score === 'number') ? Math.max(0, Math.min(100, parsed.score)) : 50;
-    let risk = 100 - safety;
-    const word = String(parsed.verdict || '');
-    if (word.indexOf('خطر') !== -1) risk = Math.max(risk, 60);
-    else if (word.indexOf('مشبوه') !== -1) risk = Math.max(risk, 30);
-    else if (word.indexOf('آمن') !== -1 || word.indexOf('أمن') !== -1) risk = Math.min(risk, 29);
-    return {
-      provider: 'gemini',
-      risk: Math.max(0, Math.min(100, risk)),
-      reasons: (Array.isArray(parsed.reasons) ? parsed.reasons : [])
-        .filter(x => typeof x === 'string' && x).slice(0, 3),
-      officialDomain: (typeof parsed.official_domain === 'string' &&
-        parsed.official_domain && parsed.official_domain !== 'null') ? parsed.official_domain : null,
-      display: (typeof parsed.display === 'string' && parsed.display) ? parsed.display : null
-    };
-  } catch (e) {
-    return { failed: true, error: (e && e.name === 'AbortError') ? 'timeout' : 'network' };
+  const bodyJson = JSON.stringify({
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { temperature: 0.1, responseMimeType: 'application/json' }
+  });
+  const t0 = Date.now();
+  let lastError = 'network';
+  for (const model of models) {
+    const endpoint = customEp ||
+      ('https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent');
+    try {
+      const ctl = new AbortController();
+      const remaining = GEMINI_TOTAL_MS - (Date.now() - t0);
+      const t = setTimeout(() => ctl.abort(), Math.min(GEMINI_TIMEOUT_MS, Math.max(remaining, 500)));
+      const r = await fetch(endpoint + '?key=' + encodeURIComponent(key), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: ctl.signal,
+        body: bodyJson
+      });
+      clearTimeout(t);
+      if (!r.ok) {
+        /* تشخيص آمن: رمز حالة Google فقط (مثل NOT_FOUND) — لا رسالة كاملة ولا أي قيم حساسة */
+        let g = '';
+        try {
+          const eb = await r.json();
+          if (eb && eb.error && eb.error.status) g = ':' + eb.error.status;
+        } catch (e) {}
+        lastError = 'http_' + r.status + g;
+        /* 404 على النقطة الافتراضية = النموذج غير متاح — جرّب التالي؛
+           أما مفتاح/حصة/شبكة فأبلغ عنها فوراً بلا تجربة إضافية */
+        if (!customEp && r.status === 404) continue;
+        return { failed: true, error: lastError };
+      }
+      const data = await r.json();
+      geminiWorkingModel = model;
+      const parsed = parseGeminiJson(data && data.candidates && data.candidates[0] &&
+        data.candidates[0].content && data.candidates[0].content.parts &&
+        data.candidates[0].content.parts[0] && data.candidates[0].content.parts[0].text);
+      if (!parsed) return { failed: true, error: 'bad_json' };
+      /* score عند النموذج «درجة أمان» بينما نظامنا «درجة خطر» — نحوّل ونحرس التناقض بكلمة الحكم */
+      const safety = (typeof parsed.score === 'number') ? Math.max(0, Math.min(100, parsed.score)) : 50;
+      let risk = 100 - safety;
+      const word = String(parsed.verdict || '');
+      if (word.indexOf('خطر') !== -1) risk = Math.max(risk, 60);
+      else if (word.indexOf('مشبوه') !== -1) risk = Math.max(risk, 30);
+      else if (word.indexOf('آمن') !== -1 || word.indexOf('أمن') !== -1) risk = Math.min(risk, 29);
+      return {
+        provider: 'gemini',
+        risk: Math.max(0, Math.min(100, risk)),
+        reasons: (Array.isArray(parsed.reasons) ? parsed.reasons : [])
+          .filter(x => typeof x === 'string' && x).slice(0, 3),
+        officialDomain: (typeof parsed.official_domain === 'string' &&
+          parsed.official_domain && parsed.official_domain !== 'null') ? parsed.official_domain : null,
+        display: (typeof parsed.display === 'string' && parsed.display) ? parsed.display : null
+      };
+    } catch (e) {
+      lastError = (e && e.name === 'AbortError') ? 'timeout' : 'network';
+      /* نفاد السقف الزمني الكلي — لا محاولات إضافية حفاظاً على سرعة الفحص */
+      if (Date.now() - t0 >= GEMINI_TOTAL_MS - 500) return { failed: true, error: lastError };
+      continue;
+    }
   }
+  return { failed: true, error: lastError };
 }
 
 /* المرحلة 3: طبقة AI عامة (اختيارية) — تُستخدم فقط إن لم يُضبط مفتاح Gemini */
@@ -343,7 +377,9 @@ function health() {
       },
       /* مؤشرات تشخيصية بلا أي قيم: هل المتغيرات الاختيارية مضافة؟ — تكشف من الخارج سبب http_404 */
       aiEndpointCustom: Boolean(process.env.PCS_GEMINI_ENDPOINT),
-      aiModelOverride: Boolean(process.env.PCS_GEMINI_MODEL)
+      aiModelOverride: Boolean(process.env.PCS_GEMINI_MODEL),
+      /* النموذج الفعّال (التجاوز اليدوي أو آخر نموذج ناجح من السلسلة) — بلا أسرار */
+      aiModel: process.env.PCS_GEMINI_MODEL || geminiWorkingModel || GEMINI_MODEL_CHAIN[0]
     }
   };
 }
