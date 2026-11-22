@@ -51,9 +51,15 @@ function preflight(res) {
   res.end();
 }
 
-function send(res, status, body) {
+function send(res, status, body, contentType) {
   setCors(res);
   res.statusCode = status;
+  /* ردود نصية جاهزة (format=text لاختصارات iOS) تُبَث كما هي بلا JSON */
+  if (contentType && typeof body === 'string') {
+    res.setHeader('Content-Type', contentType);
+    res.end(body);
+    return;
+  }
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.end(JSON.stringify(body, null, 2));
 }
@@ -261,9 +267,26 @@ function aiInfoOf(ai) {
   return { used: true, provider: ai.provider, attempted: true, error: null };
 }
 
+/* النتيجة كنص عربي جاهز للعرض داخل اختصار iOS (format=text) — أسطر قليلة بلا JSON */
+function verdictToText(v) {
+  if (!v || (!v.registrable && !v.host)) {
+    return '⚠️ لم يصل رابط صحيح للحماية.\nانسخ الرابط كاملاً (من بدايته حتى نهايته) ثم أعد المحاولة، أو افحصه من الموقع مباشرة.';
+  }
+  const emoji = v.level === 'danger' ? '🔴' : v.level === 'caution' ? '🟡' : '🟢';
+  const lines = [emoji + ' ' + v.levelText + ' (' + v.score + '/100) — ' + (v.registrable || v.host)];
+  for (const r of (v.reasons || []).slice(0, 3)) lines.push('• ' + r.text);
+  if (v.comparison && v.comparison.officialHost) lines.push('✅ الموقع الرسمي الصحيح: ' + v.comparison.officialHost);
+  if (v.level === 'danger') lines.push('⛔ لا تفتح الرابط ولا تُدخل أي بيانات.');
+  else if (v.level === 'caution') lines.push('⚠️ تقدّم بحذر — لا تُدخل بيانات حساسة.');
+  else lines.push('الرابط يبدو مطابقاً لجهة معروفة — وابقَ متيقظاً دائماً.');
+  lines.push('———');
+  lines.push('فحص حصن · المحرك v' + ENGINE.version + (v.ai ? ' · تحليل ذكي 🤖' : ''));
+  return lines.join('\n');
+}
+
 /* ============ المعالجات ============ */
 
-async function scan(urlParam, source) {
+async function scan(urlParam, source, fmt) {
   if (!urlParam) return { status: 400, body: { ok: false, error: 'missing url parameter' } };
   const t0 = Date.now();
   const src = normalizeSource(source);
@@ -281,6 +304,10 @@ async function scan(urlParam, source) {
     aiProvider: (ai && !ai.failed) ? ai.provider : null
   });
   if (scanlog.length > LOG_CAP) scanlog.splice(0, scanlog.length - LOG_CAP);
+  /* وضع النص: يستخدمه اختصار iOS — يعرض الرد مباشرة دون تحليل JSON */
+  if (String(fmt || '').toLowerCase() === 'text') {
+    return { status: 200, body: verdictToText(final), textResponse: true };
+  }
   return {
     status: 200,
     body: {
