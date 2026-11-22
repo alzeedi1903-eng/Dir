@@ -1,6 +1,6 @@
 /*
- * درع السياق الاستباقي — محرك الكشف والتحليل
- * Proactive Context Shield — detection engine (pure JS, بيئة محايدة)
+ * حصن (Hisn) — محرك الكشف والتحليل
+ * Hisn — detection engine (pure JS, بيئة محايدة)
  * يعمل في: Service Worker + Content Scripts + Node (الاختبارات)
  * لا يعتمد على أي مكتبة خارجية، ولا يرسل أي بيانات خارج الجهاز.
  */
@@ -141,6 +141,19 @@
       rawLabels = rawHost.split('.').filter(function (l) { return l && l !== 'www'; });
     }
 
+    /* طبقة إزالة الحروف المتشابهة بصرياً قبل المطابقة — تلتقط انتحال punycode الممزوج (емiratesnbd-secure.com) */
+    var labelSets = [evalLabels];
+    if (rawLabels.length) labelSets.push(rawLabels);
+    var dhEvalLabels = evalLabels.map(deHomoglyph);
+    if (dhEvalLabels.join('.') !== evalLabels.join('.')) labelSets.push(dhEvalLabels);
+    var dhRawLabels = rawLabels.map(deHomoglyph);
+    if (dhRawLabels.length && dhRawLabels.join('.') !== rawLabels.join('.')) labelSets.push(dhRawLabels);
+    var typoHosts = regs.slice();
+    for (var ri = 0; ri < regs.length; ri++) {
+      var dhReg = deHomoglyph(regs[ri]);
+      if (typoHosts.indexOf(dhReg) === -1) typoHosts.push(dhReg);
+    }
+
     var score = 0;
 
     if (simulated) add('SIM', 'وضع المحاكاة: التقييم على النطاق «' + simulated + '»', 0);
@@ -166,9 +179,12 @@
         ent = entities[i];
         if (ent.domain.length < 5) continue; // تجنب حجب نطاقات رسمية قصيرة بفروق ضئيلة
         maxD = (ent.domain.length >= CFG.typoLongLen) ? CFG.typoMaxDistanceLong : CFG.typoMaxDistanceShort;
-        if (Math.abs(ent.domain.length - evalReg.length) > maxD) continue;
-        dist = levenshtein(evalReg, ent.domain);
-        if (dist > 0 && dist <= maxD) { hit = ent; kind = 'typo'; break; }
+        for (var th = 0; th < typoHosts.length; th++) {
+          if (Math.abs(ent.domain.length - typoHosts[th].length) > maxD) continue;
+          dist = levenshtein(typoHosts[th], ent.domain);
+          if (dist > 0 && dist <= maxD) { hit = ent; kind = 'typo'; break; }
+        }
+        if (hit) break;
       }
     }
     if (!hit) {
@@ -178,11 +194,11 @@
         for (var t = 0; t < ent.tokens.length; t++) {
           var tok = ent.tokens[t];
           if (tok.length < CFG.brandMinTokenLen) continue;
-          for (var l = 0; l < evalLabels.length; l++) {
-            if (tokenInLabel(evalLabels[l], tok)) { hit = ent; kind = 'brand'; break outer; }
-          }
-          for (var l2 = 0; l2 < rawLabels.length; l2++) {
-            if (tokenInLabel(rawLabels[l2], tok)) { hit = ent; kind = 'brand'; break outer; }
+          for (var s = 0; s < labelSets.length; s++) {
+            var labelGroup = labelSets[s];
+            for (var l = 0; l < labelGroup.length; l++) {
+              if (tokenInLabel(labelGroup[l], tok)) { hit = ent; kind = 'brand'; break outer; }
+            }
           }
         }
       }
@@ -191,12 +207,16 @@
     if (hit && kind === 'official') {
       add('OFFICIAL', 'نطاق رسمي موثق: ' + hit.name, -200);
     } else if (hit && kind === 'homoglyph') {
-      score += add('HOMOGLYPH', 'انتحال هوية «' + hit.name + '» باستخدام حروف متشابهة بصرياً', CFG.weights.homoglyph);
+      score += add('HOMOGLYPH', 'انتحال هوية «' + hit.name + '» بحروف متشابهة بصرياً — الموقع الرسمي الصحيح: ' + hit.domain, CFG.weights.homoglyph);
     } else if (hit && kind === 'typo') {
-      score += add('TYPO', 'النطاق قريب جداً من موقع «' + hit.name + '» الرسمي (' + hit.domain + ') — محاولة انتحال', CFG.weights.typoSquat);
+      score += add('TYPO', 'النطاق قريب جداً من موقع «' + hit.name + '» الرسمي (بفارق ' + dist + ' حرف فقط) — الموقع الرسمي الصحيح: ' + hit.domain, CFG.weights.typoSquat);
     } else if (hit && kind === 'brand') {
-      score += add('BRAND', 'النطاق يستخدم اسم «' + hit.name + '» لكنه ليس موقعه الرسمي', CFG.weights.brandMisuse);
+      score += add('BRAND', 'النطاق يستخدم اسم «' + hit.name + '» لكنه ليس موقعه الرسمي — الموقع الرسمي الصحيح: ' + hit.domain, CFG.weights.brandMisuse);
     }
+
+    /* بيانات المقارنة الفورية بين الرابط المشبوه والموقع الرسمي (تُعرض في كل الواجهات) */
+    var shownHost = (!simulated && rawHost && rawHost !== evalHost) ? rawHost : evalHost;
+    var comparison = (hit && kind !== 'official') ? buildComparison(hit, kind, shownHost, evalReg, dist, [shownHost, evalHost]) : null;
 
     /* --- مختصر روابط --- */
     if (DATA.shorteners.indexOf(evalReg) !== -1) {
@@ -281,8 +301,74 @@
       score: score,
       level: level,
       levelText: levelText,
-      reasons: reasons
+      reasons: reasons,
+      comparison: comparison
     };
+  }
+
+  /* ================= المقارنة الفورية مع الموقع الرسمي ================= */
+
+  /*
+   * تقسيم النطاقين إلى: بداية مشتركة + وسط مختلف + نهاية مشتركة،
+   * لتعرض الواجهات الجزء المُزيَّف مضاءً مقابل الجزء الرسمي — فوراً ودون أي طلب شبكة.
+   */
+  function diffParts(fake, official) {
+    var p = 0;
+    while (p < fake.length && p < official.length && fake[p] === official[p]) p++;
+    var s = 0;
+    while (s < (fake.length - p) && s < (official.length - p) &&
+           fake[fake.length - 1 - s] === official[official.length - 1 - s]) s++;
+    return {
+      prefix: fake.slice(0, p),
+      fakeMid: fake.slice(p, fake.length - s),
+      officialMid: official.slice(p, official.length - s),
+      suffix: fake.slice(fake.length - s)
+    };
+  }
+
+  function buildComparison(ent, kind, shownHost, evalReg, dist, scanHosts) {
+    var c = {
+      entity: ent.name,
+      kind: kind,
+      kindText: kind === 'homoglyph' ? 'حروف متشابهة بصرياً مُستبدلة'
+        : kind === 'typo' ? 'تشابه إملائي (Typosquatting)'
+        : 'استخدام اسم الجهة في نطاق غير رسمي',
+      fakeHost: shownHost,
+      officialHost: ent.domain,
+      officialUrl: 'https://' + ent.domain
+    };
+    if (kind === 'typo') c.distance = (typeof dist === 'number') ? dist : levenshtein(evalReg, ent.domain);
+    if (kind === 'homoglyph') {
+      c.substituted = [];
+      var seen = {};
+      var hosts = scanHosts || [shownHost];
+      for (var h = 0; h < hosts.length; h++) {
+        var hh = hosts[h] || '';
+        for (var i = 0; i < hh.length; i++) {
+          var ch = hh[i];
+          if (DATA.homoglyphs[ch] !== undefined && !seen[ch]) {
+            seen[ch] = true;
+            c.substituted.push({ from: ch, to: DATA.homoglyphs[ch] });
+          }
+        }
+      }
+    }
+    c.diff = diffParts(shownHost, ent.domain);
+    return c;
+  }
+
+  /*
+   * compare(rawUrl) — المقارنة الجاهزة بين رابط مشبوه وموقعه الرسمي المطابق.
+   * ترجع null إن لم يوجد انتحال (رابط عادي أو نطاق رسمي نفسه).
+   */
+  function compare(rawUrl) {
+    var res = analyze(rawUrl, {});
+    if (!res || !res.comparison) return null;
+    return Object.assign({}, res.comparison, {
+      score: res.score,
+      level: res.level,
+      levelText: res.levelText
+    });
   }
 
   /* ================= فحص النماذج (Content Script) ================= */
@@ -356,6 +442,7 @@
   var ENGINE = {
     version: DATA.version,
     analyze: analyze,
+    compare: compare,
     analyzeForms: analyzeForms,
     buildDisplay: buildDisplay,
     registrableDomain: registrableDomain,
