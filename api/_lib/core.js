@@ -340,7 +340,10 @@ function health() {
       aiProviders: {
         gemini: Boolean(process.env.GEMINI_API_KEY),
         generic: Boolean(process.env.PCS_AI_ENDPOINT)
-      }
+      },
+      /* مؤشرات تشخيصية بلا أي قيم: هل المتغيرات الاختيارية مضافة؟ — تكشف من الخارج سبب http_404 */
+      aiEndpointCustom: Boolean(process.env.PCS_GEMINI_ENDPOINT),
+      aiModelOverride: Boolean(process.env.PCS_GEMINI_MODEL)
     }
   };
 }
