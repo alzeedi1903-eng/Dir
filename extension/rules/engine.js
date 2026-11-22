@@ -43,8 +43,12 @@
     return prev[b.length];
   }
 
-  /* استخراج النطاق المسجل (eTLD+1 مبسّط مع دعم اللواحق المركبة) */
+  /* استخراج النطاق المسجل (eTLD+1 مبسّط مع دعم اللواحق المركبة)
+     إصلاح: عناوين IP تُعاد كما هي — كان الاستخراج يفكك 192.168.1.5 إلى «1.5»
+     فيُحسب عمق نطاقات فرعية وهمي (+DEEPSUB) وتُبنى قاعدة الجدار الصلب على
+     نطاق «1.5» غير صحيح. */
   function registrableDomain(host) {
+    if (IP_RE.test(host)) return host;
     var labels = host.split('.').filter(function (l) { return l.length > 0; });
     if (labels.length <= 2) return labels.join('.');
     var last2 = labels.slice(-2).join('.');
@@ -292,6 +296,11 @@
     /* --- الخطأ المركب: انتحال جهة معروفة + كلمات ثقة خادعة في نطاق واحد --- */
     if (hit && kind !== 'official' && kwScore > 0 && CFG.weights.compoundPenalty > 0) {
       score += add('COMPOUND', 'نمط احتيال مركّب: انتحال «' + hit.name + '» مع كلمات ثقة خادعة (مثل secure / verify / login) — من أقوى مؤشرات صفحات الاحتيال', CFG.weights.compoundPenalty);
+    }
+
+    /* --- الخطأ المركب الثاني: عنوان IP مباشر + كلمات خطرة — نمط صفحات جمع البيانات الكلاسيكي --- */
+    if (IP_RE.test(evalHost) && kwScore > 0 && CFG.weights.ipKeywordCompound > 0) {
+      score += add('COMPOUND', 'عنوان IP مباشر مع كلمات مرتبطة بالاحتيال (مثل otp / login) — نمط كلاسيكي لصفحات جمع بيانات البطاقات والرموز', CFG.weights.ipKeywordCompound);
     }
 
     /* --- عمق النطاقات الفرعية --- */
