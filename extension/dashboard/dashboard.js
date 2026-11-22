@@ -156,7 +156,7 @@ document.querySelectorAll('.filter').forEach(btn => {
 /* التصدير: تغذية استخباراتية جاهزة للمشاركة مع الجهات المختصة */
 $('exportJson').addEventListener('click', () => {
   const feed = {
-    generator: 'Proactive Context Shield v1.0.0',
+    generator: 'Proactive Context Shield v' + chrome.runtime.getManifest().version,
     generatedAt: new Date().toISOString(),
     stats: currentData.stats,
     campaigns: currentData.log
