@@ -267,9 +267,10 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
       <div class="tapbtns">
         <a class="tapbtn main" id="installClip" href="#">📲 تثبيت «فحص الحافظة» فوراً</a>
         <a class="tapbtn" id="installShare" href="#">🔗 تثبيت «فحص من المشاركة»</a>
+        <a class="tapbtn" id="installFile" href="#" download="حصن-فحص-الحافظة.shortcut">📁 بديل مؤكد — تنزيل الملف ثم فتحه من «الملفات»</a>
       </div>
       <p class="note"><b>الاستخدام بعد التثبيت:</b> انسخ أي رابط مشبوه من أي تطبيق ← شغّل «حصن» من الشاشة الرئيسية أو Siri ← تظهر النتيجة فوراً. أو زر المشاركة في أي تطبيق ← «حصن — فحص المشاركة». يقوم iOS بطلب الأذونات تلقائياً عند أول استخدام (قراءة الحافظة).</p>
-      <p class="note" id="untrustNote">إن لم يستورد iOS الملف: <b>الإعدادات ← الاختصارات ← شغّل «السماح بالاختصارات غير الموثوقة»</b> (يظهر الخيار بعد تشغيل أي اختصار مرة واحدة) ثم اضغط زر التثبيت من جديد.</p>
+      <p class="note" id="untrustNote">إن لم يستورد iOS الملف: افتح تطبيق «الاختصارات» وشغّل أي اختصار مرة واحدة أولاً، ثم فعّل <b>«السماح بالاختصارات غير الموثوقة»</b> — الإعدادات ← التطبيقات ← الاختصارات ← خيارات متقدمة (في الإصدارات الأقدم: الإعدادات ← الاختصارات). بعدها أعد المحاولة، أو استخدم زر التنزيل المباشر أعلاه وافتح الملف من تطبيق «الملفات».</p>
       <p class="note" id="deskNote">💻 أنت تتصفح من حاسوب — افتح هذا الموقع على الآيفون ثم اضغط زر التثبيت، فينتقل بك النظام مباشرة إلى تطبيق الاختصارات لإكمال الإعداد.</p>
     </div>
 
@@ -434,21 +435,24 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
   $('copyApi').addEventListener('click', function () { copyText($('apiUrl').textContent, this); });
 
   /* ═══ تثبيت iOS بنقرة واحدة: بناء روابط الاستيراد + تكييف البطاقة حسب الجهاز ═══
-     إصلاح: كانت الروابط تشير إلى ملفات ثابتة بأسماء عربية غير موجودة في المستودع
-     (الملفات الفعلية a1/a2.shortcut كانت تالفة أصلاً). الآن تولّد الدالة
-     /api/shortcut الملف لحظة الطلب بعنوان الموقع الفعلي محفوراً داخله —
-     فيعمل الاختصار المُستورد فوراً دون أي لصق يدوي للعنوان. */
+     إصلاح خطأ «فشل الاستيراد — رابط المقدم للاختصار لم يكن صالحاً»:
+     1) الملف يُجلب الآن من مسار ينتهي بامتداد .shortcut فعلياً
+        (إعادة توجيه vercel.json من /shortcut/:file إلى /api/shortcut?name=:file)،
+     2) والمحتوى binary plist خالص — الصيغة الوحيدة التي يقبلها مستورد iOS
+        (النسخة السابقة كانت XML نصياً فرفضه iOS بهذا الخطأ)،
+     3) وزر ثالث يوفّر مساراً بديلاً مؤكداً: تنزيل الملف ثم فتحه من «الملفات». */
   (function () {
     const box = $('shortcut');
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
       (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const fileUrl = function (variant) { return location.origin + '/shortcut/' + variant + '.shortcut'; };
     const importLink = function (variant) {
-      return 'shortcuts://import-shortcut?url=' +
-        encodeURIComponent(location.origin + '/api/shortcut?name=' + variant);
+      return 'shortcuts://import-shortcut?url=' + encodeURIComponent(fileUrl(variant));
     };
-    const clip = $('installClip'), share = $('installShare');
+    const clip = $('installClip'), share = $('installShare'), fileBtn = $('installFile');
     if (clip) clip.href = importLink('clip');
     if (share) share.href = importLink('share');
+    if (fileBtn) fileBtn.href = fileUrl('clip');
     if (isIOS || location.search.indexOf('ios=1') !== -1) {
       box.classList.add('ios');
       $('untrustNote').style.display = 'block';
