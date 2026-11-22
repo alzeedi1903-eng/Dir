@@ -73,7 +73,7 @@
       'zip', 'mov', 'top', 'xyz', 'click', 'link', 'gq', 'tk', 'ml', 'cf',
       'work', 'rest', 'loan', 'men', 'mom', 'party', 'review', 'science',
       'stream', 'download', 'racing', 'icu', 'cfd', 'sbs', 'cyou', 'buzz',
-      'monster', 'quest', 'bond', 'country', 'kim', 'bar', 'rest'
+      'monster', 'quest', 'bond', 'country', 'kim', 'bar'
     ],
 
     /*
@@ -106,8 +106,7 @@
     /* عتبات التقييم والأوزان */
     config: {
       safeMax: 24,          // أقل من أو يساوي: آمن
-      cautionMax: 59,       // أقل من أو يساوي: مشبوه — بعده خطر
-      blockThreshold: 60,   // درجة الحجب الفوري للتنقل
+      blockThreshold: 60,   // درجة الحجب الفوري للتنقل (فوق safeMax وحتى العتبة: مشبوه)
       typoMaxDistanceShort: 2,   // مسافة تحرير مسموحة للنطاقات القصيرة
       typoMaxDistanceLong: 3,    // للنطاقات الطويلة (>= 14 حرفاً)
       typoLongLen: 14,
