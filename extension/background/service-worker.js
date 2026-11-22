@@ -1,7 +1,10 @@
 /*
- * درع السياق الاستباقي — Service Worker (MV3)
- * الفحص الاستباقي قبل اكتمال التحميل + حجب الروابط الخطرة + شارة المتصفح + سجل التهديدات.
+ * حصن (Hisn) — Service Worker (MV3)
+ * الجدار التلقائي بين نقرة المستخدم والموقع الحقيقي:
+ * فحص فوري قبل اكتمال التحميل + جدار صلب على مستوى الشبكة (declarativeNetRequest)
+ * يمنع أي وصول لاحق للنطاقات الخطرة — من رابط، إعادة توجيه، أو تطبيق خارجي فتح الرابط في المتصفح.
  * الفحص محلي 100%: لا يخرج أي عنوان أو بيانات من الجهاز.
+ * ملاحظة: مفاتيح التخزين الداخلية (pcs_*) تُبقى كما هي للتوافق مع إعدادات المستخدمين المحفوظة.
  */
 'use strict';
 
@@ -10,6 +13,7 @@ importScripts('/rules/data.js', '/rules/engine.js');
 const ENGINE = self.PCS_ENGINE;
 const DEFAULT_SETTINGS = {
   blocking: true,
+  hardWall: true,       // الجدار الصلب: حجب فوري على مستوى الشبكة للنطاقات المكتشفة
   scanSearch: true,
   scanAllLinks: 'auto',
   useCloud: false,
@@ -93,6 +97,66 @@ async function setAllowedOnce(url) {
   await chrome.storage.local.set({ pcs_allowed });
 }
 
+/* ================= الجدار الصلب (declarativeNetRequest) =================
+ * عند أول كشف لنطاق خطر تُضاف قاعدة حجب على مستوى الشبكة:
+ * أي محاولة وصول لاحقة للنطاق (ورadamente الفرعية) تُحجب فوراً قبل أي تحميل —
+ * حتى لو جاء الرابط من تطبيق خارجي أو إعادة توجيه أو داخل إطار، ودون انتظار أي كود.
+ */
+
+const DNR_MAX = 500; // سقف القواعد (الأقدم يُزال تلقائياً والجدار يعيد بناء نفسه عند أول فحص)
+
+async function hostReg(url) {
+  try {
+    const u = new URL(url);
+    return ENGINE.registrableDomain((u.hostname || '').toLowerCase().replace(/\.$/, ''));
+  } catch (e) { return ''; }
+}
+
+async function addHardBlock(url) {
+  const reg = await hostReg(url);
+  if (!reg) return;
+  const { pcs_dnr_map = {}, pcs_dnr_next = 1 } = await chrome.storage.local.get(['pcs_dnr_map', 'pcs_dnr_next']);
+  if (pcs_dnr_map[reg]) return;
+  const ruleId = pcs_dnr_next;
+  try {
+    await chrome.declarativeNetRequest.updateDynamicRules({
+      addRules: [{
+        id: ruleId,
+        priority: 1,
+        action: { type: 'block' },
+        condition: { requestDomains: [reg], resourceTypes: ['main_frame', 'sub_frame'] }
+      }],
+      removeRuleIds: []
+    });
+  } catch (e) { return; }
+  pcs_dnr_map[reg] = ruleId;
+  const entries = Object.entries(pcs_dnr_map);
+  if (entries.length > DNR_MAX) {
+    const excess = entries.slice(0, entries.length - (DNR_MAX - 50));
+    if (excess.length) {
+      await chrome.declarativeNetRequest.updateDynamicRules({
+        removeRuleIds: excess.map(e => e[1]),
+        addRules: []
+      });
+      excess.forEach(e => { delete pcs_dnr_map[e[0]]; });
+    }
+  }
+  await chrome.storage.local.set({ pcs_dnr_map, pcs_dnr_next: ruleId + 1 });
+}
+
+async function removeHardBlock(url) {
+  const reg = await hostReg(url);
+  if (!reg) return;
+  const { pcs_dnr_map = {} } = await chrome.storage.local.get('pcs_dnr_map');
+  const id = pcs_dnr_map[reg];
+  if (!id) return;
+  try {
+    await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: [id], addRules: [] });
+  } catch (e) { /* القاعدة غير موجودة */ }
+  delete pcs_dnr_map[reg];
+  await chrome.storage.local.set({ pcs_dnr_map });
+}
+
 /* ================= وضع السحابة (الخادم السحابي الموحد) ================= */
 
 /* استعلام الخادم الموحد الذي يخدم iOS وAndroid معاً — بمهلة قصيرة حتى لا يبطئ التصفح */
@@ -146,7 +210,7 @@ async function analyzeUrl(url, opts) {
 
 /* ================= الفحص الاستباقي للتنقل ================= */
 
-async function handleNavigation(tabId, url) {
+async function handleNavigation(tabId, url, opts) {
   if (!/^https?:/i.test(url)) {
     setBadge(tabId, 'na');
     return;
@@ -163,18 +227,41 @@ async function handleNavigation(tabId, url) {
       action = 'override';
     } else if (settings.blocking) {
       action = 'blocked';
+      /* الجدار الأول: فحص فوري قبل اكتمال التحميل — صفحة الاعتراض تحل محل الموقع */
       const page = chrome.runtime.getURL('interstitial/blocked.html') +
-        '?t=' + encodeURIComponent(url) + '&s=' + res.score;
+        '?t=' + encodeURIComponent(url) + '&s=' + res.score + '&w=scan';
       try { chrome.tabs.update(tabId, { url: page }); } catch (e) { /* ignore */ }
+      /* الجدار الثاني: قاعدة حجب صلبة على مستوى الشبكة لأي محاولة لاحقة */
+      if (settings.hardWall) await addHardBlock(url);
     }
   }
 
-  await recordScan(res, action);
+  if (!opts || opts.record !== false) await recordScan(res, action);
 }
 
 chrome.webNavigation.onBeforeNavigate.addListener(details => {
   if (details.frameId !== 0) return; // التبويب الرئيسي فقط (الإطارات تتولاها الصفحة)
   handleNavigation(details.tabId, details.url);
+});
+
+/* تنقلات SPA داخل الصفحة (pushState/replaceState) — الجدار يفحصها كأي تنقل آخر */
+chrome.webNavigation.onHistoryStateUpdated.addListener(details => {
+  if (details.frameId !== 0) return;
+  handleNavigation(details.tabId, details.url, { record: false });
+});
+
+/* عندما يحجب الجدار الصلب الطلب على مستوى الشبكة نعرض صفحة الاعتراض بدل خطأ المتصفح */
+chrome.webNavigation.onErrorOccurred.addListener(details => {
+  if (details.frameId !== 0) return;
+  if (!details.error || details.error.indexOf('ERR_BLOCKED_BY_CLIENT') === -1) return;
+  (async () => {
+    const reg = await hostReg(details.url);
+    const { pcs_dnr_map = {} } = await chrome.storage.local.get('pcs_dnr_map');
+    if (!pcs_dnr_map[reg]) return;
+    const page = chrome.runtime.getURL('interstitial/blocked.html') +
+      '?t=' + encodeURIComponent(details.url) + '&w=hard';
+    try { chrome.tabs.update(details.tabId, { url: page }); } catch (e) { /* ignore */ }
+  })();
 });
 
 chrome.tabs.onActivated.addListener(async info => {
@@ -213,6 +300,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         case 'allowOnce':
           await setAllowedOnce(msg.url);
+          await removeHardBlock(msg.url); // إزالة قاعدة الجدار الصلب حتى يستطيع المستخدم المتابعة واعياً
           sendResponse({ ok: true });
           break;
         case 'report': {
@@ -240,15 +328,23 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
           });
           break;
         }
-        case 'clearData':
+        case 'clearData': {
+          const { pcs_dnr_map = {} } = await chrome.storage.local.get('pcs_dnr_map');
+          const ids = Object.values(pcs_dnr_map);
+          if (ids.length) {
+            try { await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: ids, addRules: [] }); } catch (e) { /* ignore */ }
+          }
           await chrome.storage.local.set({
             pcs_log: [],
             pcs_reports: [],
             pcs_stats: { total: 0, safe: 0, caution: 0, danger: 0, blocked: 0 },
-            pcs_allowed: {}
+            pcs_allowed: {},
+            pcs_dnr_map: {},
+            pcs_dnr_next: 1
           });
           sendResponse({ ok: true });
           break;
+        }
         default:
           sendResponse({ ok: false, error: 'unknown message type' });
       }
