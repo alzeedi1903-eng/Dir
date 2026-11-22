@@ -7,7 +7,7 @@
   'use strict';
 
   var PCS_DATA = {
-    version: '2.1.0',
+    version: '2.2.0',
 
     /*
      * الجهات المحمية: نطاقات رسمية موثقة (الإمارات).
@@ -85,7 +85,10 @@
       { kw: 'winner', w: 12 }, { kw: 'lottery', w: 12 }, { kw: 'password', w: 10 },
       { kw: 'payment', w: 10 }, { kw: 'wallet', w: 10 }, { kw: 'refund', w: 10 },
       { kw: 'fines', w: 10 }, { kw: 'penalty', w: 10 }, { kw: 'login', w: 8 },
-      { kw: 'signin', w: 8 }, { kw: 'verify', w: 8 }, { kw: 'verify-', w: 8 },
+      { kw: 'signin', w: 8 }, { kw: 'verify', w: 8 },
+      /* ملاحظة إصلاح: كانت كلمة «verify-» مدرجة بجانب «verify» فتحتسب التكرار مرتين
+         في النطاقات مثل verify-secure.com (‎+16 لكلمة واحدة) — أُزيلت لأن
+         «verify» يغطي كل الأشكال، والشرطة ليست شرطاً. */
       { kw: 'update', w: 8 }, { kw: 'confirm', w: 8 }, { kw: 'account', w: 8 },
       { kw: 'billing', w: 8 }, { kw: 'invoice', w: 6 }, { kw: 'secure', w: 6 },
       { kw: 'security', w: 6 }, { kw: 'ibank', w: 8 }, { kw: 'netbanking', w: 8 },
@@ -119,12 +122,13 @@
       weights: {
         brandMisuse: 45,
         compoundPenalty: 8,   // عقوبة اجتماع انتحال جهة معروفة مع كلمات ثقة خادعة (مثل secure / verify)
+        ipKeywordCompound: 15, // عقوبة اجتماع عنوان IP مباشر مع كلمات خطرة (otp/login) — نمط صفحات جمع البيانات الكلاسيكي
         typoSquat: 62,
         homoglyph: 60,
         shortener: 30,
         punycode: 25,
         ipHost: 30,
-        userinfo: 35,
+        userinfo: 45,   // خدعة «@» (bank.com@evil.xyz) نمط انتحال كلاسيكي — كانت 35 فتظل «مشبوه» وهي أقوى مؤشرات الخطر
         deepSubdomains: 8,
         suspiciousTld: 15,
         insecureHttp: 6,
