@@ -1,5 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "rewrites": [
+    { "source": "/shortcut/:file", "destination": "/api/shortcut?name=:file" }
+  ],
   "headers": [
     {
       "source": "/api/(.*)",
