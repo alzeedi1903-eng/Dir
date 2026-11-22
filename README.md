@@ -74,6 +74,8 @@ vercel --prod
 
 الخادم يدمج **Gemini فوق المحرك المحلي الفوري**: القواعد المحلية تحسم خلال أجزاء من الثانية، ثم يراجع Gemini النتيجة بمعرفته بالنطاقات الرسمية للبنوك والجهات الخليجية ويصححها إن لزم — **والأسوأ بين النتيجتين هو الحكم النهائي** (الذكاء الاصطناعي لا يخفض أبداً كشف القواعد المحلية، فقط يرفعه). أي فشل في Gemini (لا مفتاح / مهلة 9 ثوانٍ / خطأ شبكة) يعيد الاستجابة بنتيجة المحرك المحلي كما هي — **الخدمة لا تفشل أبداً بسبب طبقة الذكاء**.
 
+**التشخيص عبر حقل `ai` في استجابة `/api/scan`:** `attempted: true` يعني أن المفتاح مضبوط في الخادم؛ وإن ظهر مع `used: false` فالسبب مبيَّن في `error` برمز آمن: `http_400/403` = المفتاح غير صالح أو Generative Language API غير مفعّل للمشروع (الأشهر: نسخ المفتاح مع اقتباسات `"..."` أو فراغات زائدة، أو مفتاح حُذف من AI Studio) · `http_429` = نفدت الحصة المجانية للنموذج · `timeout` = تجاوز 9 ثوانٍ · `network` = تعذر الوصول للخدمة · `bad_json` = رد غير مفهوم. في كل الحالات يعمل الفحص المحلي فوراً بلا أي انقطاع.
+
 التفعيل (مرة واحدة):
 1. أنشئ مفتاح API من [Google AI Studio](https://aistudio.google.com/apikey).
 2. لوحة تحكم Vercel ← المشروع ← Settings ← **Environment Variables** ← أضف `GEMINI_API_KEY` بقيمة المفتاح ← Save.
@@ -132,7 +134,7 @@ git push -u origin main
 
 | Endpoint | الوظيفة |
 |---|---|
-| `GET /api/scan?url=...&source=search\|maps\|message\|direct\|shortcut\|clipboard\|bookmark` | فحص رابط → `{ok, verdict: {score, level, levelText, reasons[], comparison?, aiProvider?}, display, classification, safety_score, official_domain, ai: {used, provider}, timing}` — `verdict.score` درجة خطر (100 = أشد) بينما `safety_score` درجة أمان معكوسة (100 = آمن تماماً)، و`classification` الحكم العربي كسلسلة، و`official_domain` النطاق الرسمي عند انتحال (من المقارنة المحلية الموثقة أو تحليل Gemini)، و`comparison` بيانات المقارنة الحرفية، و`timing.ms` زمن الفحص |
+| `GET /api/scan?url=...&source=search\|maps\|message\|direct\|shortcut\|clipboard\|bookmark` | فحص رابط → `{ok, verdict: {score, level, levelText, reasons[], comparison?, aiProvider?}, display, classification, safety_score, official_domain, ai: {used, provider, attempted, error}, timing}` — `verdict.score` درجة خطر (100 = أشد) بينما `safety_score` درجة أمان معكوسة (100 = آمن تماماً)، و`classification` الحكم العربي كسلسلة، و`official_domain` النطاق الرسمي عند انتحال (من المقارنة المحلية الموثقة أو تحليل Gemini)، و`comparison` بيانات المقارنة الحرفية، و`timing.ms` زمن الفحص |
 | `POST /api/scan` | نفس الفحص عبر JSON `{url, source}` |
 | `POST /api/report` | بلاغ `{url, note?, level?, source?}` (الحقول مقصوصة: url ≤ 2000، note ≤ 500) |
 | `GET /api/threats` | تجميع الحملات حسب النطاق والمصدر + سجل مبهم (النطاق فقط دون العناوين الكاملة) + البلاغات |
@@ -146,7 +148,7 @@ git push -u origin main
 
 - **59 اختبار محرك**: `node scripts/test_engine.js` — انتحال الجهات، Typosquatting، Homoglyphs، المختصرات، IP، `@`، مصدر السياق، نص العرض، والمقارنة الفورية (14 اختباراً)، وحالات آمنة لمنع الإيجابيات الكاذبة.
 - **26 اختبار الخادم المحلي**: `node scripts/test_server.js` (نسخة الهاكاثون في مجلد `proactive-context-shield`).
-- **33 اختبار دوال Vercel**: `node scripts/test_api.js` — المحولات الخادمية بطلبات وهمية + CORS + حد المعدل + خصوصية threats + طبقة Gemini (بلا مفتاح = سلوك مطابق، فشل الخدمة = احتياطي سلس، خادم وهمي = دمج متحفظ صحيح).
+- **34 اختبار دوال Vercel**: `node scripts/test_api.js` — المحولات الخادمية بطلبات وهمية + CORS + حد المعدل + خصوصية threats + طبقة Gemini (بلا مفتاح = سلوك مطابق، فشل الخدمة = احتياطي سلس برمز تشخيص آمن، خادم وهمي = دمج متحفظ صحيح).
 - **فحص المستودع**: `python3 scripts/validate_repo.py` — manifest، صيغة كل JS، JSON، الأيقونات، اكتمال الملفات.
 
 > السكربتات في مجلد `scripts/` بمستودع العمل؛ يمكنك نقلها للمستودع إن أردت تضمين الاختبارات مع الكود.
