@@ -6,7 +6,7 @@
 
 1. 🧱 **الجدار التلقائي**: إضافة Chrome تفحص كل تنقل قبل تحميله (حتى نقرات الروابط القادمة من تطبيقات خارجية)، وكل نطاق خطر يُكتشف يدخل «الجدار الصلب» — قاعدة حجب على مستوى الشبكة تمنع أي وصول لاحق فوراً، من أي مصدر.
 2. ⚖️ **المقارنة الفورية**: عند اكتشاف انتحال يُعرض الرابط المشبوه مقابل الموقع الرسمي للجهة — الجزء المزيَّف مضاءً بالأحمر والرسمي بالأخضر، مع عدد الحروف المختلفة والحروف المتشابهة المُستبدلة وزر مباشر للموقع الرسمي — كل ذلك بلا أي طلب شبكة (زمن الفحص يظهر بالمللي ثانية).
-3. 📱 **الفحص من الهاتف**: موقع Vercel + اختصارات Apple — تفحص أي رابط من أي تطبيق وتعرض النتيجة إشعاراً فورياً.
+3. 📱 **الفحص من الهاتف**: موقع Vercel + اختصارات Apple بتثبيت بنقرة واحدة — ملفا `.shortcut` جاهزان وروابط استيراد مباشرة تنقلك من الموقع إلى تطبيق الاختصارات فوراً (الحافظة + ورقة المشاركة)، مع وصفات يدوية كبديل احتياطي. تفحص أي رابط من أي تطبيق وتعرض النتيجة فوراً.
 
 > بلا مكتبات خارجية، بلا build step، بلا قواعد بيانات — كل الملفات جاهزة للنشر فوراً.
 
@@ -17,9 +17,10 @@
 ```
 hisn/
 ├── public/
-│   ├── index.html          الموقع: الفحص + المقارنة الفورية + دليل اختصارات Apple + قسم إضافة Chrome
+│   ├── index.html          الموقع: الفحص + المقارنة الفورية + تثبيت iOS بنقرة واحدة + قسم إضافة Chrome
 │   ├── manifest.webmanifest   PWA (إضافة إلى الشاشة الرئيسية)
-│   └── icons/              أيقونات 180/192/512
+│   ├── icons/              أيقونات 180/192/512
+│   └── shortcut/           ملفا .shortcut جاهزان للتثبيت بنقرة واحدة على iOS (الحافظة + المشاركة)
 ├── api/                    دوال Vercel الخادمية (Node، صفر dependencies)
 │   ├── scan.js             GET /api/scan?url=...&source=... أو POST JSON
 │   ├── report.js           POST /api/report — بلاغات المستخدم
@@ -115,7 +116,7 @@ git push -u origin main
 | **زر المفضلة الذكي** | نقرة واحدة أثناء التصفح تفحص الصفحة الحالية | Safari |
 | **إضافة Safari Web Extension** | تلقائي كامل: شارات على الروابط وحجب الخطر دون أي نقرة | Safari — البناء يتطلب Mac + Xcode (دليل `safari-ios/`) |
 
-الخلاصة التقنية: كل الوصفات تستدعي `https://موقعك/api/scan?url=<الرابط>&source=shortcut|clipboard|bookmark` وتقرأ حقل `display` الجاهز (الحكم + الدرجة + الأسباب) وتعرضه إشعاراً أو تنبيهاً.
+الخلاصة التقنية: كل الوصفات تستدعي `https://موقعك/api/scan?url=<الرابط>&source=shortcut|clipboard|bookmark&format=text` فترجع النتيجة نصاً عربياً جاهزاً (الحكم + الدرجة + الأسباب) يُعرض مباشرة بإشعار أو تنبيه أو Show Result — بلا أي تحليل JSON.
 
 > **شفافية تقنية:** Apple لا تسمح لأي طرف ثالث باعتراض كل نقرات الروابط في جميع التطبيقات — هذه أقرب نقاط الأتمتة الممكنة على iOS، والفحص يصبح تلقائياً بالكامل داخل Safari عبر الإضافة.
 
@@ -134,7 +135,7 @@ git push -u origin main
 
 | Endpoint | الوظيفة |
 |---|---|
-| `GET /api/scan?url=...&source=search\|maps\|message\|direct\|shortcut\|clipboard\|bookmark` | فحص رابط → `{ok, verdict: {score, level, levelText, reasons[], comparison?, aiProvider?}, display, classification, safety_score, official_domain, ai: {used, provider, attempted, error}, timing}` — `verdict.score` درجة خطر (100 = أشد) بينما `safety_score` درجة أمان معكوسة (100 = آمن تماماً)، و`classification` الحكم العربي كسلسلة، و`official_domain` النطاق الرسمي عند انتحال (من المقارنة المحلية الموثقة أو تحليل Gemini)، و`comparison` بيانات المقارنة الحرفية، و`timing.ms` زمن الفحص |
+| `GET /api/scan?url=...&source=search\|maps\|message\|direct\|shortcut\|clipboard\|bookmark` | فحص رابط → `{ok, verdict: {score, level, levelText, reasons[], comparison?, aiProvider?}, display, classification, safety_score, official_domain, ai: {used, provider, attempted, error}, timing}` — `verdict.score` درجة خطر (100 = أشد) بينما `safety_score` درجة أمان معكوسة (100 = آمن تماماً)، و`classification` الحكم العربي كسلسلة، و`official_domain` النطاق الرسمي عند انتحال (من المقارنة المحلية الموثقة أو تحليل Gemini)، و`comparison` بيانات المقارنة الحرفية، و`timing.ms` زمن الفحص؛ وأضف `&format=text` لتعود النتيجة نصاً عربياً جاهزاً للعرض (`text/plain`) — هو ما تستخدمه ملفات التثبيت بنقرة واحدة على iOS |
 | `POST /api/scan` | نفس الفحص عبر JSON `{url, source}` |
 | `POST /api/report` | بلاغ `{url, note?, level?, source?}` (الحقول مقصوصة: url ≤ 2000، note ≤ 500) |
 | `GET /api/threats` | تجميع الحملات حسب النطاق والمصدر + سجل مبهم (النطاق فقط دون العناوين الكاملة) + البلاغات |
