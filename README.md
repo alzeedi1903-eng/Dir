@@ -82,7 +82,7 @@ vercel --prod
 3. Deployments ← **Redeploy** على آخر نسخة.
 
 متغيرات إضافية اختيارية:
-- `PCS_GEMINI_MODEL` = اسم النموذج (الافتراضي `gemini-2.5-flash`)
+- `PCS_GEMINI_MODEL` = تجاوز يدوي لاسم النموذج (بدونه تُستخدم سلسلة تلقائية: `gemini-3.5-flash-lite` ← `gemini-flash-latest` ← `gemini-3.8-flash` ← `gemini-2.5-flash` — عند 404 لنموذج تقاعد تُجرَّب البدائل بالترتيب ويثبت الناجح)
 - `PCS_GEMINI_ENDPOINT` = تجاوز رابط الخدمة (للاختبار أو وسيط خاص)
 - `PCS_AI_ENDPOINT` / `PCS_AI_KEY` = طبقة ذكاء عامة بديلة (تُستخدم فقط إن لم يوجد مفتاح Gemini)
 
