@@ -160,7 +160,7 @@
 
     /* --- مطابقة الجهات المحمية (exact → homoglyph → typo → brand) --- */
     var entities = DATA.protectedEntities;
-    var hit = null, kind = null, n = entities.length, i, ent, dist, maxD;
+    var hit = null, kind = null, n = entities.length, i, ent, dist, maxD, tokenDist = 0;
 
     for (i = 0; i < n; i++) {
       if (regs.indexOf(entities[i].domain) !== -1) { hit = entities[i]; kind = 'official'; break; }
@@ -204,19 +204,51 @@
       }
     }
 
+    /* طبقة رابعة: تشابه إملائي على مستوى مقاطع النطاق — تلتقط الخطأ المركب مثل
+       emiratsnbd-secure-verify.com (حذف حرف من اسم الجهة + لاحقة ثقة خادعة)،
+       حيث تفشل مطابقة النطاق المسجل الكامل ومطابقة الاسم الحرفية معاً.
+       حماية من الإيجابيات الكاذبة: المقاطع القصيرة (أقل من tokenTypoMinLen)
+       مستثناة تماماً، والمسافة الأطول (2) تُقبل فقط للمقاطع الطويلة. */
+    if (!hit) {
+      outer2:
+      for (i = 0; i < n; i++) {
+        ent = entities[i];
+        for (var s2 = 0; s2 < labelSets.length; s2++) {
+          var labelGroup2 = labelSets[s2];
+          for (var l2 = 0; l2 < labelGroup2.length; l2++) {
+            var parts = labelGroup2[l2].split('-');
+            for (var p2 = 0; p2 < parts.length; p2++) {
+              var ftok = parts[p2];
+              for (var t2 = 0; t2 < ent.tokens.length; t2++) {
+                var off = ent.tokens[t2];
+                var minLen = Math.min(ftok.length, off.length);
+                if (minLen < CFG.tokenTypoMinLen) continue;
+                var maxTD = (minLen >= CFG.tokenTypoLongLen) ? CFG.tokenTypoMaxDistanceLong : CFG.tokenTypoMaxDistanceShort;
+                if (Math.abs(ftok.length - off.length) > maxTD) continue;
+                var dTok = levenshtein(ftok, off);
+                if (dTok > 0 && dTok <= maxTD) { hit = ent; kind = 'typoToken'; tokenDist = dTok; break outer2; }
+              }
+            }
+          }
+        }
+      }
+    }
+
     if (hit && kind === 'official') {
       add('OFFICIAL', 'نطاق رسمي موثق: ' + hit.name, -200);
     } else if (hit && kind === 'homoglyph') {
       score += add('HOMOGLYPH', 'انتحال هوية «' + hit.name + '» بحروف متشابهة بصرياً — الموقع الرسمي الصحيح: ' + hit.domain, CFG.weights.homoglyph);
     } else if (hit && kind === 'typo') {
       score += add('TYPO', 'النطاق قريب جداً من موقع «' + hit.name + '» الرسمي (بفارق ' + dist + ' حرف فقط) — الموقع الرسمي الصحيح: ' + hit.domain, CFG.weights.typoSquat);
+    } else if (hit && kind === 'typoToken') {
+      score += add('TYPO', 'النطاق يحتوي اسم «' + hit.name + '» بفارق ' + tokenDist + ' حرف داخل تركيبة نطاق مزيّفة — الموقع الرسمي الصحيح: ' + hit.domain, CFG.weights.typoSquat);
     } else if (hit && kind === 'brand') {
       score += add('BRAND', 'النطاق يستخدم اسم «' + hit.name + '» لكنه ليس موقعه الرسمي — الموقع الرسمي الصحيح: ' + hit.domain, CFG.weights.brandMisuse);
     }
 
     /* بيانات المقارنة الفورية بين الرابط المشبوه والموقع الرسمي (تُعرض في كل الواجهات) */
     var shownHost = (!simulated && rawHost && rawHost !== evalHost) ? rawHost : evalHost;
-    var comparison = (hit && kind !== 'official') ? buildComparison(hit, kind, shownHost, evalReg, dist, [shownHost, evalHost]) : null;
+    var comparison = (hit && kind !== 'official') ? buildComparison(hit, kind, shownHost, evalReg, (kind === 'typoToken') ? tokenDist : dist, [shownHost, evalHost]) : null;
 
     /* --- مختصر روابط --- */
     if (DATA.shorteners.indexOf(evalReg) !== -1) {
@@ -255,6 +287,11 @@
       kwScore = Math.min(kwScore, CFG.keywordCap);
       score += kwScore;
       add('KEYWORDS', 'كلمات مفتاحية مرتبطة بالاحتيال المالي: ' + kwHits.join('، '), kwScore);
+    }
+
+    /* --- الخطأ المركب: انتحال جهة معروفة + كلمات ثقة خادعة في نطاق واحد --- */
+    if (hit && kind !== 'official' && kwScore > 0 && CFG.weights.compoundPenalty > 0) {
+      score += add('COMPOUND', 'نمط احتيال مركّب: انتحال «' + hit.name + '» مع كلمات ثقة خادعة (مثل secure / verify / login) — من أقوى مؤشرات صفحات الاحتيال', CFG.weights.compoundPenalty);
     }
 
     /* --- عمق النطاقات الفرعية --- */
@@ -332,12 +369,13 @@
       kind: kind,
       kindText: kind === 'homoglyph' ? 'حروف متشابهة بصرياً مُستبدلة'
         : kind === 'typo' ? 'تشابه إملائي (Typosquatting)'
+        : kind === 'typoToken' ? 'تشابه إملائي في اسم الجهة (Typosquatting)'
         : 'استخدام اسم الجهة في نطاق غير رسمي',
       fakeHost: shownHost,
       officialHost: ent.domain,
       officialUrl: 'https://' + ent.domain
     };
-    if (kind === 'typo') c.distance = (typeof dist === 'number') ? dist : levenshtein(evalReg, ent.domain);
+    if (kind === 'typo' || kind === 'typoToken') c.distance = (typeof dist === 'number') ? dist : levenshtein(evalReg, ent.domain);
     if (kind === 'homoglyph') {
       c.substituted = [];
       var seen = {};
@@ -463,4 +501,3 @@
     module.exports = ENGINE;
   }
 })(typeof self !== 'undefined' ? self : globalThis);
-
