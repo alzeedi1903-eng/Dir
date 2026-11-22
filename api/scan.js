@@ -13,6 +13,17 @@ module.exports = async (req, res) => {
     url = req.body.url;
     source = req.body.source || source;
   }
+  /* تقوية: بعض المستهلكين يرسلون JSON بدون ترويسة Content-Type الصحيحة فيصل النص خاماً —
+     كان يُتجاهل فيُرجع 400 رغم أن الرابط صحيح (report.js كانت تفكك النص والفحص لا) */
+  if (!url && typeof req.body === 'string') {
+    try {
+      const parsed = JSON.parse(req.body);
+      if (parsed && typeof parsed === 'object') {
+        url = parsed.url;
+        source = parsed.source || source;
+      }
+    } catch (e) { /* نص غير JSON — يُترك ويُعاد 400 لاحقاً إن لم يوجد url */ }
+  }
   const fmt = (req.query && req.query.format) || (req.body && req.body.format) || '';
   const out = await core.scan(url, source, fmt);
   if (out.textResponse) return core.send(res, out.status, out.body, 'text/plain; charset=utf-8');
