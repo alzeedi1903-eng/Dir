@@ -41,6 +41,42 @@ function renderResult(res) {
     list.appendChild(li);
   });
 
+  /* المقارنة الفورية مع الموقع الرسمي عند اكتشاف انتحال — كانت تُعرض في الموقع وصفحة
+     الحجب فقط رغم أن README يَعِد بعرضها في كل الواجهات */
+  const cmp = res.comparison;
+  const cmpCard = $('cmpCard');
+  if (cmp) {
+    cmpCard.style.display = 'block';
+    const rows = $('cmpRows');
+    rows.innerHTML = '';
+    const cmpRow = (label, prefix, mid, suffix, cls) => {
+      const row = document.createElement('div');
+      row.className = 'cmp-row ' + cls;
+      const tag = document.createElement('span');
+      tag.className = 'cmp-tag';
+      tag.textContent = label;
+      const code = document.createElement('code');
+      code.className = 'cmp-host';
+      code.appendChild(document.createTextNode(prefix));
+      if (mid) {
+        const mark = document.createElement('mark');
+        mark.textContent = mid;
+        code.appendChild(mark);
+      }
+      code.appendChild(document.createTextNode(suffix));
+      row.appendChild(tag);
+      row.appendChild(code);
+      rows.appendChild(row);
+    };
+    cmpRow('المشبوه:', cmp.diff.prefix, cmp.diff.fakeMid, cmp.diff.suffix, 'cmp-bad');
+    cmpRow('الرسمي:', cmp.diff.prefix, cmp.diff.officialMid, cmp.diff.suffix, 'cmp-good');
+    const go = $('cmpLink');
+    go.href = cmp.officialUrl;
+    go.textContent = 'الرسمي ↗ ' + cmp.officialHost;
+  } else {
+    cmpCard.style.display = 'none';
+  }
+
   $('reportBtn').onclick = async () => {
     await send({ type: 'report', url: res.url, score: res.score, level: res.level, source: 'popup' });
     $('reportBtn').textContent = 'تم الإبلاغ ✓';
