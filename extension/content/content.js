@@ -1,5 +1,5 @@
 /*
- * درع السياق الاستباقي — Content Script
+ * حصن (Hisn) — Content Script
  * 1) شريط تنبيه أعلى الصفحة حسب تصنيف الرابط
  * 2) وسم نتائج البحث والروابط بشارات ملونة (أخضر/أصفر/أحمر)
  * 3) حارس النماذج: اعتراض إرسال بيانات حساسة في صفحة مشبوهة
@@ -89,7 +89,7 @@
     b.className = 'pcs-badge pcs-badge-' + res.level;
     b.textContent = ENGINE.levels[res.level].text;
     const reasons = res.reasons.filter(r => r.weight > 0).slice(0, 3).map(r => r.text).join(' • ');
-    b.title = 'درع السياق: ' + ENGINE.levels[res.level].text +
+    b.title = 'حصن: ' + ENGINE.levels[res.level].text +
       ' (' + res.score + '/100)' + (reasons ? '\n' + reasons : '');
     return b;
   }
