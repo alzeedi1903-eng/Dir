@@ -7,7 +7,7 @@
   'use strict';
 
   var PCS_DATA = {
-    version: '2.0.0',
+    version: '2.1.0',
 
     /*
      * الجهات المحمية: نطاقات رسمية موثقة (الإمارات).
@@ -112,8 +112,13 @@
       typoLongLen: 14,
       keywordCap: 32,       // سقف مجموع الكلمات المفتاحية
       brandMinTokenLen: 3,  // أقل طول لمقطع اسم الجهة
+      tokenTypoMinLen: 5,   // أقل طول لمقطع نطاق يُفحص بمسافة تحرير — يمنع الإيجابيات الكاذبة للمقاطع القصيرة
+      tokenTypoLongLen: 6,  // من هذا الطول فصاعداً تُقبل المسافة الأطول
+      tokenTypoMaxDistanceShort: 1, // مسافة تحرير مقاطع أسماء الجهات القصيرة
+      tokenTypoMaxDistanceLong: 2,  // مسافة تحرير مقاطع الأسماء الطويلة — يلتقط الخطأ المركب (حذف حرف + لاحقة ثقة)
       weights: {
         brandMisuse: 45,
+        compoundPenalty: 8,   // عقوبة اجتماع انتحال جهة معروفة مع كلمات ثقة خادعة (مثل secure / verify)
         typoSquat: 62,
         homoglyph: 60,
         shortener: 30,
@@ -152,4 +157,3 @@
     module.exports = PCS_DATA;
   }
 })(typeof self !== 'undefined' ? self : globalThis);
-
