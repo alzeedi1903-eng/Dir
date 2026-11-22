@@ -174,6 +174,8 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
       <option value="search">نتيجة بحث أو إعلان</option>
       <option value="maps">بطاقة خريطة (حجز / تواصل)</option>
       <option value="shortcut">مشاركة سريعة (Share Sheet)</option>
+      <option value="clipboard">نسخته من أي تطبيق (فحص الحافظة)</option>
+      <option value="bookmark">زر المفضلة في Safari</option>
     </select>
     <div class="examples">
       <span data-url="https://emiratesnbd-secure-verify.com/login">مثال: بنك مقلد</span>
@@ -208,35 +210,68 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
     <button class="ghost clear" id="histClear">مسح السجل</button>
   </section>
 
-  <!-- إضافة الاختصارات -->
+  <!-- الفحص التلقائي من الهاتف -->
   <section class="card" id="shortcut">
-    <h2>📱 التثبيت في تطبيق «الاختصارات» — لمرة واحدة فقط</h2>
-    <p class="sub">أنت هنا مرة واحدة لإنشاء الاختصار؛ بعدها تفحص أي رابط من زر المشاركة داخل أي تطبيق دون العودة لهذا الموقع.</p>
+    <h2>📱 الفحص التلقائي من الهاتف — إعداد لمرة واحدة فقط</h2>
+    <p class="sub">بعد هذا الإعداد يفحص النظام الروابط من أي تطبيق دون دخول هذا الموقع، ويعرض رسالة فورية بنوع الرابط وحالته. يقوم iOS بطلب الأذونات تلقائياً عند أول استخدام (قراءة الحافظة / صلاحيات Safari).</p>
 
-    <div class="once">⚡ خطوتان: انسخ الرابط أدناه ← اتبع 6 خطوات. لن تحتاج الموقع مجدداً.</div>
+    <div class="once">⚡ انسخ رابط الفحص أدناه مرة واحدة ← أنشئ الاختصار ← لن تحتاج الموقع مجدداً.</div>
 
-    <!-- الوصفة أ -->
-    <div style="margin-top:16px">
-      <span class="badge rec">الوصفة الأسرع — تنبيه فوري دون فتح صفحة</span>
-      <p class="sub" style="margin-bottom:6px">انسخ رابط الفحص (يستخدم عنوان هذا الموقع تلقائياً):</p>
-      <div class="urlbox">
-        <code id="apiUrl">…</code>
-        <button class="ghost" id="copyApi">نسخ</button>
-      </div>
-      <ol class="steps">
-        <li>افتح تطبيق <b>الاختصارات</b> (Shortcuts) واضغط زر <b>+</b> لإنشاء اختصار جديد.</li>
-        <li>أضف إجراء <b>ترميز URL</b> (URL Encode) واضبط مدخلاته على <b>إدخال الاختصار</b> (Shortcut Input).</li>
-        <li>أضف إجراء <b>نص</b> (Text)، الصق فيه الرابط المنسوخ أعلاه، ثم أدرج متغير <b>النص المشفّر</b> الناتج من الخطوة السابقة في نهايته.</li>
-        <li>أضف إجراء <b>الحصول على محتوى URL</b> (Get Contents of URL) واضبط العنوان على النص السابق.</li>
-        <li>أضف إجراء <b>الحصول على قيمة القاموس</b> (Get Dictionary Value) واكتب المفتاح: <code>display</code></li>
-        <li>أضف إجراء <b>إظهار تنبيه</b> (Show Alert) واضبط الرسالة على النتيجة. ثم من أسفل شاشة الإعداد فعّل <b>إظهار في ورقة المشاركة</b> (Show in Share Sheet) واختر نوع الاستلام: <b>روابط URL</b>. سمِّه «فحص الرابط».</li>
-      </ol>
-      <p class="note"><b>الاستخدام بعد التثبيت:</b> داخل واتساب أو البريد أو أي تطبيق — اضغط زر المشاركة على الرابط ← «فحص الرابط» ← يظهر التنبيه فوراً: 🟢 آمن / 🟡 مشبوه / 🔴 خطر مع الدرجة والأسباب.</p>
+    <p class="sub" style="margin-bottom:6px">رابط الفحص (يستخدم عنوان هذا الموقع تلقائياً):</p>
+    <div class="urlbox">
+      <code id="apiUrl">…</code>
+      <button class="ghost" id="copyApi">نسخ</button>
     </div>
 
-    <!-- الوصفة ب -->
+    <!-- الوصفة 1: الحافظة + اللمس الخلفي -->
+    <div style="margin-top:16px">
+      <span class="badge rec">الأقرب للتلقائي — انسخ الرابط ثم اضغط مرتين على خلف الهاتف</span>
+      <ol class="steps">
+        <li>افتح تطبيق <b>الاختصارات</b> (Shortcuts) ← زر <b>+</b>.</li>
+        <li>أضف إجراء <b>الحصول على الحافظة</b> (Get Clipboard).</li>
+        <li>أضف إجراء <b>ترميز URL</b> (URL Encode) واضبط مدخلاته على <b>الحافظة</b>.</li>
+        <li>أضف إجراء <b>نص</b> (Text): الصق رابط الفحص المنسوخ أعلاه، ثم أدرج متغير <b>النص المشفّر</b> في نهايته.</li>
+        <li>أضف إجراء <b>الحصول على محتوى URL</b> (Get Contents of URL) واضبط العنوان على النص السابق.</li>
+        <li>أضف إجراء <b>الحصول على قيمة القاموس</b> (Get Dictionary Value) واكتب المفتاح: <code>display</code></li>
+        <li>أضف إجراء <b>إظهار إشعار</b> (Show Notification) بمحتوى النتيجة، وسمِّ الاختصار «فحص الحافظة».</li>
+        <li>التفعيل التلقائي: <b>الإعدادات ← إمكانية الوصول ← اللمس ← اللمس الخلفي (Back Tap) ← نقرة مزدوجة ← فحص الحافظة</b>.</li>
+      </ol>
+      <p class="note"><b>الاستخدام من أي تطبيق:</b> ضغطة مطوّلة على الرابط ← <b>نسخ</b> ← اضغط مرتين على خلف الهاتف ← يظهر الإشعار فوراً: 🟢 آمن / 🟡 مشبوه / 🔴 خطر + الدرجة والأسباب. في أول استخدام يطلب iOS الإذن بقراءة الحافظة — اختر «السماح».</p>
+    </div>
+
+    <!-- الوصفة 2: ورقة المشاركة -->
     <div style="margin-top:20px">
-      <span class="badge alt">بديل — شاشة نتيجة ملونة كاملة</span>
+      <span class="badge alt">من زر المشاركة في أي تطبيق — تنبيه فوري</span>
+      <ol class="steps">
+        <li>أنشئ اختصاراً جديداً واضغط زر <b>+</b>.</li>
+        <li>أضف إجراء <b>ترميز URL</b> (URL Encode) واضبط مدخلاته على <b>إدخال الاختصار</b> (Shortcut Input).</li>
+        <li>أضف إجراء <b>نص</b>: الصق رابط الفحص أعلاه + متغير <b>النص المشفّر</b> في نهايته.</li>
+        <li>أضف <b>الحصول على محتوى URL</b> على النص السابق.</li>
+        <li>أضف <b>الحصول على قيمة القاموس</b> بالمفتاح <code>display</code>.</li>
+        <li>أضف <b>إظهار تنبيه</b> (Show Alert) بالنتيجة، وفعّل <b>إظهار في ورقة المشاركة</b> بنوع <b>روابط URL</b>. سمِّه «فحص الرابط».</li>
+      </ol>
+      <p class="note"><b>الاستخدام:</b> زر المشاركة على أي رابط ← «فحص الرابط» ← تنبيه فوري بالحكم والأسباب.</p>
+    </div>
+
+    <!-- الوصفة 3: المفضلة الذكية -->
+    <div style="margin-top:20px">
+      <span class="badge alt">زر المفضلة الذكي في Safari — نقرة واحدة أثناء التصفح</span>
+      <p class="sub" style="margin-bottom:6px">انسخ هذا الكود:</p>
+      <div class="urlbox">
+        <code id="bmCode">…</code>
+        <button class="ghost" id="copyBm">نسخ</button>
+      </div>
+      <ol class="steps">
+        <li>في Safari أضف أي صفحة إلى <b>المفضلة</b> (زر المشاركة ← إضافة إلى المفضلة).</li>
+        <li>افتح المفضلة ← «تعديل» ← اضغط العنصر الجديد ← غيّر الاسم إلى <b>فحص هذا الرابط</b>.</li>
+        <li>امسح حقل الرابط والصق الكود المنسوخ أعلاه واحفظ.</li>
+        <li>أنت على أي صفحة؟ اضغط المفضلة ← تفتح صفحة النتيجة وتفحص الصفحة الحالية تلقائياً.</li>
+      </ol>
+    </div>
+
+    <!-- الوصفة 4: شاشة كاملة من المشاركة -->
+    <div style="margin-top:20px">
+      <span class="badge alt">بديل — شاشة نتيجة ملونة كاملة من المشاركة</span>
       <p class="sub" style="margin-bottom:6px">انسخ رابط العرض المرئي:</p>
       <div class="urlbox">
         <code id="webUrl">…</code>
@@ -248,6 +283,16 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
         <li>أضف إجراء <b>نص</b>: الصق الرابط المنسوخ أعلاه + متغير <b>النص المشفّر</b> بعده.</li>
         <li>أضف إجراء <b>فتح روابط</b> (Open URLs) — تفتح صفحة النتيجة وتُفحص تلقائياً.</li>
       </ol>
+    </div>
+
+    <!-- Safari التلقائي الكامل -->
+    <div style="margin-top:20px">
+      <span class="badge rec">الفحص التلقائي الكامل — داخل Safari فقط</span>
+      <p class="sub">إضافة Safari Web Extension تُثبَّت كتطبيق: تُلصق شارات ملونة على روابط الصفحات، وتحجب صفحات الخطر قبل فتحها، وتفحص نتائج البحث — تلقائياً دون أي نقرة. يطلب Safari الإذن عند أول تشغيل. البناء يحتاج حاسوب Mac مع Xcode — الدليل خطوة بخطوة في ملف <code>safari-ios/README.md</code> ضمن المستودع.</p>
+    </div>
+
+    <div class="once" style="background:#d9770618;border-color:#d9770644;color:#fde68a">
+      ℹ️ شفافية تقنية: Apple لا تسمح لأي طرف ثالث باعتراض كل نقرات الروابط في جميع التطبيقات — لذلك أقرب حلول «التلقائي» على iOS هي: نسخ ← لمسة على خلف الهاتف، أو زر المشاركة، أو نقرة المفضلة. وفي متصفح Safari يصبح الفحص تلقائياً بالكامل عبر الإضافة أعلاه.
     </div>
   </section>
 
@@ -294,6 +339,7 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
   /* تعبئة روابط الوصفات بعنوان الموقع الفعلي */
   $('apiUrl').textContent = ORIGIN + '/api/scan?url=';
   $('webUrl').textContent = ORIGIN + '/?url=';
+  $('bmCode').textContent = "javascript:location.href='" + ORIGIN + "/?url='+encodeURIComponent(location.href)+'&source=bookmark'";
 
   function esc(s) {
     return String(s == null ? '' : s)
@@ -320,6 +366,7 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
   }
   $('copyApi').addEventListener('click', function () { copyText($('apiUrl').textContent, this); });
   $('copyWeb').addEventListener('click', function () { copyText($('webUrl').textContent, this); });
+  $('copyBm').addEventListener('click', function () { copyText($('bmCode').textContent, this); });
 
   /* ===== السجل المحلي ===== */
   var HKEY = 'fs_history';
