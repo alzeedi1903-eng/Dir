@@ -1,22 +1,22 @@
 {
   "manifest_version": 3,
-  "name": "درع السياق الاستباقي — Proactive Context Shield",
-  "version": "1.1.0",
-  "description": "فحص استباقي للروابط ونتائج البحث قبل فتحها: كشف المواقع المقلدة والاحتيال المالي قبل إدخال أي بيانات، مع وضع سحابة اختياري.",
+  "name": "حصن — Hisn Link Shield",
+  "version": "2.0.0",
+  "description": "جدار فحص تلقائي بين نقرة المستخدم والموقع الحقيقي: كشف المواقع المقلدة ومقارنتها بالرسمية قبل فتحها، مع حجب صلب على مستوى الشبكة ووضع سحابة اختياري.",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
   },
-  "permissions": ["storage", "webNavigation", "tabs"],
+  "permissions": ["storage", "webNavigation", "tabs", "declarativeNetRequest"],
   "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background/service-worker.js"
   },
   "action": {
     "default_popup": "popup/popup.html",
-    "default_title": "درع السياق الاستباقي",
+    "default_title": "حصن — جدار الفحص التلقائي",
     "default_icon": {
       "16": "icons/icon16.png",
       "32": "icons/icon32.png",
