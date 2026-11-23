@@ -8,13 +8,19 @@
  */
 'use strict';
 
-importScripts('/rules/data.js', '/rules/engine.js');
+/* تحميل المحرك: في MV3 (service worker) نستخدم importScripts، وفي متغاير MV2
+   (Firefox Android القديم) تعمل الخلفية كصفحة تُحمِّل data.js وengine.js عبر
+   background.html — لذلك نحمي الاستدعاء بشرط وجود الدالة */
+if (typeof importScripts === 'function') {
+  importScripts('/rules/data.js', '/rules/engine.js');
+}
 
 const ENGINE = self.PCS_ENGINE;
 const DEFAULT_SETTINGS = {
   blocking: true,
   hardWall: true,       // الجدار الصلب: حجب فوري على مستوى الشبكة للنطاقات المكتشفة
   scanSearch: true,
+  silentDots: true,     // الوضع الصامت: نقطة 🟢/🟡/🔴 بجانب كل رابط قبل لمس المستخدم (البديل 1)
   scanAllLinks: 'auto',
   useCloud: false,
   cloudEndpoint: ''
