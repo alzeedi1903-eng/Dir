@@ -213,7 +213,7 @@ check('عدد الجهات المحمية = 27', DATA.protectedEntities.length =
 }
 check('وزن userinfo مرفوع إلى 45', DATA.config.weights.userinfo === 45);
 check('عقبة IP+كلمات مضافة = 15', DATA.config.weights.ipKeywordCompound === 15);
-check('إصدار المحرك 2.2.0', ENGINE.version === '2.2.0', 'الفعلي ' + ENGINE.version);
+check('إصدار المحرك 2.3.0', ENGINE.version === '2.3.0', 'الفعلي ' + ENGINE.version);
 
 /* ================= الخلاصة ================= */
 console.log('\nمحرك حصن: ' + passed + ' نجح / ' + failed + ' فشل — المحرك v' + ENGINE.version);
@@ -221,4 +221,3 @@ if (failed) {
   console.error('فشل ' + failed + ' اختباراً');
   process.exit(1);
 }
-
