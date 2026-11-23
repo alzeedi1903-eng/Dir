@@ -67,7 +67,9 @@ function send(res, status, body, contentType) {
 /* ============ أدوات مشتركة ============ */
 
 function normalizeSource(s) {
-  const allowed = ['search', 'maps', 'message', 'sms', 'chat', 'whatsapp', 'direct', 'extension', 'web', 'shortcut', 'pwa', 'clipboard', 'bookmark'];
+  /* shortcut أُزيل نهائياً مع جهاز الاختصارات — المصادر الجديدة تخدم تطبيقات الهاتف:
+     interceptor (معترض الروابط الوسيط) وnotification (مراقب إشعارات Android) */
+  const allowed = ['search', 'maps', 'message', 'sms', 'chat', 'whatsapp', 'direct', 'extension', 'web', 'interceptor', 'notification', 'pwa', 'clipboard', 'bookmark'];
   s = String(s || '').toLowerCase();
   return allowed.indexOf(s) !== -1 ? s : 'direct';
 }
