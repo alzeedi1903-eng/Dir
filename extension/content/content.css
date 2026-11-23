@@ -102,3 +102,25 @@ input.pcs-risk-field, textarea.pcs-risk-field {
   background: #fff; color: #b91c1c; border-color: #fca5a5;
 }
 #pcs-modal .pcs-btn-continue:hover { background: #fef2f2; }
+
+/* ===== الوضع الصامت — نقطة الفحص بجانب كل رابط (البديل 1: الإضافة الصامتة) ===== */
+.pcs-dot {
+  display: inline-block;
+  width: 10px; height: 10px;
+  margin-inline-start: 5px;
+  border-radius: 50%;
+  vertical-align: middle;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.55), 0 1px 3px rgba(0,0,0,.35);
+  pointer-events: auto;
+  cursor: help;
+}
+.pcs-dot-safe { background: #22c55e; }   /* 🟢 آمن */
+.pcs-dot-caution { background: #f59e0b; } /* 🟡 مشبوه */
+.pcs-dot-danger { background: #dc2626; animation: pcs-pulse 1.6s ease-in-out infinite; } /* 🔴 خطر */
+@keyframes pcs-pulse {
+  0%, 100% { box-shadow: 0 0 0 2px rgba(255,255,255,.55), 0 0 0 0 rgba(220,38,38,.45); }
+  50% { box-shadow: 0 0 0 2px rgba(255,255,255,.55), 0 0 0 6px rgba(220,38,38,0); }
+}
+/* النقطة داخل صفوف نتائج البحث المتصلة تبقى مرئية دون كسر السطر */
+a .pcs-dot { margin-bottom: 1px; }
