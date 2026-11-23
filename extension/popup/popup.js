@@ -107,6 +107,7 @@ async function loadSettings() {
   $('setBlocking').checked = !!s.blocking;
   $('setHardWall').checked = !!s.hardWall;
   $('setScanSearch').checked = !!s.scanSearch;
+  $('setSilentDots').checked = s.silentDots !== false;
   $('setCloud').checked = !!s.useCloud;
   $('cloudEndpoint').value = s.cloudEndpoint || '';
   $('setScanAll').value = s.scanAllLinks || 'auto';
@@ -124,6 +125,9 @@ async function bindSettings() {
   });
   $('setScanSearch').addEventListener('change', e => {
     send({ type: 'setSettings', patch: { scanSearch: e.target.checked } });
+  });
+  $('setSilentDots').addEventListener('change', e => {
+    send({ type: 'setSettings', patch: { silentDots: e.target.checked } });
   });
   $('setCloud').addEventListener('change', e => {
     send({ type: 'setSettings', patch: { useCloud: e.target.checked } });
@@ -162,4 +166,3 @@ loadStats();
 loadSettings();
 bindSettings();
 bindManual();
-
