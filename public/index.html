@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>حصن — افحص أي رابط قبل أن تخدعك</title>
-<meta name="description" content="حصن: جدار فحص تلقائي بينك وبين الروابط الاحتيالية — مقارنة فورية بين الرابط المشبوه والموقع الرسمي، وإضافة كروم تحجب الخطر قبل فتحه، واختصارات آيفون تفحص من أي تطبيق.">
+<meta name="description" content="حصن: جدار فحص تلقائي بينك وبين الروابط الاحتيالية — مقارنة فورية بين الرابط المشبوه والموقع الرسمي، إضافة صامتة تلسم كل رابط قبل لمسه، معترض روابط وسيط، مراقب إشعارات، وفلتر SMS على iPhone.">
 <meta name="theme-color" content="#0a0f1e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -166,15 +166,29 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
   .gauge { width: 68px; height: 68px; }
   .gauge .hole { width: 50px; height: 50px; font-size: 16px; }
 }
-  /* بطاقة التثبيت بنقرة واحدة (iOS) */
-  .onetap { border: 1px solid #16a34a66; background: #16a34a14; border-radius: 14px; padding: 14px 16px; margin-top: 6px; }
-  .tapbtns { display: flex; flex-wrap: wrap; gap: 10px; margin: 12px 0 8px; }
-  .tapbtn { flex: 1 1 240px; display: block; text-align: center; padding: 13px 16px; border-radius: 12px; border: 1px solid var(--green); color: #86efac; text-decoration: none; font-weight: 700; font-size: 15px; }
-  .tapbtn.main { background: var(--green); color: #f0fdf4; font-size: 16px; }
-  .tapbtn:active { transform: scale(.98); }
-  .manual summary { cursor: pointer; font-weight: 700; color: #bbf7d0; padding: 8px 0; }
-  #untrustNote, #deskNote { display: none; }
-  #shortcut.ios .onetap { border-color: var(--green); box-shadow: 0 0 14px #16a34a22; }
+
+/* ===== بطاقات البدائل الأربعة (بديل الاختصارات المحذوف) ===== */
+.alts { display: flex; flex-direction: column; gap: 12px; margin-top: 12px; }
+.altcard { border: 1px solid var(--line); background: var(--card2); border-radius: 14px; padding: 14px 16px; }
+.altcard.hot { border-color: var(--green); background: #16a34a10; }
+.alt-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.alt-title { font-size: 15.5px; font-weight: 700; color: var(--txt); }
+.chip-plat { font-size: 10.5px; font-weight: 700; border-radius: 999px; padding: 2px 10px; background: #19376d; color: #bfdbfe; border: 1px solid #2c4a7c; }
+.alt-desc { font-size: 13px; color: #d5dfef; line-height: 1.9; }
+.alt-desc code { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 1px 7px; font-size: 12px; color: var(--blue); }
+.alt-path { margin: 8px 0 0; font-size: 12px; color: var(--dim); line-height: 1.8; }
+.alt-path b { color: #4ade80; }
+.gated { font-size: 11.5px; color: var(--faint); margin-top: 6px; }
+.urlbox { display: flex; gap: 8px; margin: 10px 0 4px; }
+.urlbox code {
+  flex: 1; min-width: 0; background: var(--bg); border: 1px dashed #2c4a7c; border-radius: 10px;
+  padding: 10px 12px; font-size: 12.5px; color: var(--blue); direction: ltr; text-align: left;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: ui-monospace, Menlo, monospace;
+}
+.badge { display: inline-block; font-size: 11px; font-weight: 700; border-radius: 999px; padding: 3px 12px; margin-bottom: 10px; }
+.badge.rec { background: #16a34a22; color: #4ade80; border: 1px solid #16a34a66; }
+.note { font-size: 12px; color: var(--dim); line-height: 1.9; margin-top: 10px; }
+.note b { color: var(--blue); }
 </style>
 </head>
 <body>
@@ -212,7 +226,6 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
       <option value="message">رسالة (واتساب / SMS / تطبيق محادثة)</option>
       <option value="search">نتيجة بحث أو إعلان</option>
       <option value="maps">بطاقة خريطة (حجز / تواصل)</option>
-      <option value="shortcut">مشاركة سريعة (Share Sheet)</option>
       <option value="clipboard">نسخته من أي تطبيق (فحص الحافظة)</option>
       <option value="bookmark">زر المفضلة في Safari</option>
     </select>
@@ -257,107 +270,69 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
     <button class="ghost clear" id="histClear">مسح السجل</button>
   </section>
 
-  <!-- الفحص التلقائي من الهاتف -->
-  <section class="card" id="shortcut">
-    <h2>📱 الفحص التلقائي من الهاتف — تثبيت بنقرة واحدة</h2>
-    <p class="sub">اضغط زر التثبيت ← ينتقل النظام فوراً إلى تطبيق «الاختصارات» على هاتفك ← اضغط «إضافة الاختصار» — وينتهي التثبيت. من بعدها يفحص أي رابط من أي تطبيق ويعرض النتيجة فوراً، دون فتح هذا الموقع مجدداً.</p>
+  <!-- البدائل الأربعة على الهاتف — بديل الاختصارات المحذوف -->
+  <section class="card" id="mobile">
+    <h2>📱 الحماية على الهاتف — أربعة بدائل نظامية</h2>
+    <p class="sub">بدائل موثوقة تعمل بآليات النظام الرسمية (لا ملفات اختصارات ولا تفعيلات هشة): الإضافة الصامتة للمتصفحات، معترض الروابط الوسيط، مراقب الإشعارات، وفلتر الرسائل النصية الرسمي على iPhone.</p>
 
-    <div class="onetap" id="oneTapBox">
-      <span class="badge rec">بنقرة واحدة — من هذه الصفحة إلى تطبيق الاختصارات مباشرة</span>
-      <div class="tapbtns">
-        <a class="tapbtn main" id="installClip" href="#">📲 تثبيت «فحص الحافظة» فوراً</a>
-        <a class="tapbtn" id="installShare" href="#">🔗 تثبيت «فحص من المشاركة»</a>
-        <a class="tapbtn" id="installFile" href="#" download="حصن-فحص-الحافظة.shortcut">📁 بديل مؤكد — تنزيل الملف ثم فتحه من «الملفات»</a>
-      </div>
-      <p class="note"><b>الاستخدام بعد التثبيت:</b> انسخ أي رابط مشبوه من أي تطبيق ← شغّل «حصن» من الشاشة الرئيسية أو Siri ← تظهر النتيجة فوراً. أو زر المشاركة في أي تطبيق ← «حصن — فحص المشاركة». يقوم iOS بطلب الأذونات تلقائياً عند أول استخدام (قراءة الحافظة).</p>
-      <p class="note" id="untrustNote">إن لم يستورد iOS الملف: افتح تطبيق «الاختصارات» وشغّل أي اختصار مرة واحدة أولاً، ثم فعّل <b>«السماح بالاختصارات غير الموثوقة»</b> — الإعدادات ← التطبيقات ← الاختصارات ← خيارات متقدمة (في الإصدارات الأقدم: الإعدادات ← الاختصارات). بعدها أعد المحاولة، أو استخدم زر التنزيل المباشر أعلاه وافتح الملف من تطبيق «الملفات».</p>
-      <p class="note" id="deskNote">💻 أنت تتصفح من حاسوب — افتح هذا الموقع على الآيفون ثم اضغط زر التثبيت، فينتقل بك النظام مباشرة إلى تطبيق الاختصارات لإكمال الإعداد.</p>
-    </div>
+    <div class="alts">
 
-    <div style="margin-top:16px">
-      <span class="badge alt">تفعيل إضافي اختياري — اللمس الخلفي: نقرة مزدوجة على خلف الهاتف تفحص الحافظة</span>
-      <ol class="steps">
-        <li><b>الإعدادات ← إمكانية الوصول ← اللمس ← اللمس الخلفي (Back Tap)</b>.</li>
-        <li>اختر <b>نقرة مزدوجة</b> ← قائمة الاختصارات ← <b>حصن — فحص الحافظة</b>.</li>
-        <li>من أي تطبيق: ضغطة مطوّلة على الرابط ← نسخ ← اضغط مرتين على خلف الهاتف ← النتيجة تظهر فوراً.</li>
-      </ol>
-    </div>
-
-    <!-- الطرق اليدوية البديلة -->
-    <details class="manual" style="margin-top:18px">
-      <summary>🛠️ الطريقة اليدوية الكاملة — بديل احتياطي إن لم يعمل التثبيت بنقرة واحدة</summary>
-
-      <p class="sub" style="margin-bottom:6px;margin-top:10px">رابط الفحص (يستخدم عنوان هذا الموقع تلقائياً):</p>
-      <div class="urlbox">
-        <code id="apiUrl">…</code>
-        <button class="ghost" id="copyApi">نسخ</button>
-      </div>
-
-      <div style="margin-top:16px">
-        <span class="badge rec">الأقرب للتلقائي — انسخ الرابط ثم اضغط مرتين على خلف الهاتف</span>
-        <ol class="steps">
-          <li>افتح تطبيق <b>الاختصارات</b> (Shortcuts) ← زر <b>+</b>.</li>
-          <li>أضف إجراء <b>الحصول على الحافظة</b> (Get Clipboard).</li>
-          <li>أضف إجراء <b>ترميز URL</b> (URL Encode) واضبط مدخلاته على <b>الحافظة</b>.</li>
-          <li>أضف إجراء <b>نص</b> (Text): الصق رابط الفحص المنسوخ أعلاه، ثم أدرج متغير <b>النص المشفّر</b> في نهايته.</li>
-          <li>أضف إجراء <b>الحصول على محتوى URL</b> (Get Contents of URL) واضبط العنوان على النص السابق.</li>
-          <li>أضف إجراء <b>إظهار النتيجة</b> (Show Result) أو <b>إظهار إشعار</b> (Show Notification) بمحتوى النتيجة، وسمِّ الاختصار «فحص الحافظة».</li>
-        </ol>
-        <p class="note"><b>الاستخدام من أي تطبيق:</b> ضغطة مطوّلة على الرابط ← <b>نسخ</b> ← شغّل الاختصار ← تظهر النتيجة فوراً: 🟢 آمن / 🟡 مشبوه / 🔴 خطر + الدرجة والأسباب.</p>
-      </div>
-
-      <div style="margin-top:20px">
-        <span class="badge alt">من زر المشاركة في أي تطبيق — تنبيه فوري</span>
-        <ol class="steps">
-          <li>أنشئ اختصاراً جديداً وفعّل <b>إظهار في ورقة المشاركة</b> بنوع <b>روابط URL</b>.</li>
-          <li>أضف إجراء <b>ترميز URL</b> (URL Encode) واضبط مدخلاته على <b>إدخال الاختصار</b> (Shortcut Input).</li>
-          <li>أضف إجراء <b>نص</b>: الصق رابط الفحص أعلاه + متغير <b>النص المشفّر</b> في نهايته.</li>
-          <li>أضف <b>الحصول على محتوى URL</b> على النص السابق.</li>
-          <li>أضف <b>إظهار تنبيه</b> (Show Alert) بالنتيجة. سمِّه «فحص الرابط».</li>
-        </ol>
-        <p class="note"><b>الاستخدام:</b> زر المشاركة على أي رابط ← «فحص الرابط» ← تنبيه فوري بالحكم والأسباب.</p>
-      </div>
-
-      <div style="margin-top:20px">
-        <span class="badge alt">زر المفضلة الذكي في Safari — نقرة واحدة أثناء التصفح</span>
-        <p class="sub" style="margin-bottom:6px">انسخ هذا الكود:</p>
-        <div class="urlbox">
-          <code id="bmCode">…</code>
-          <button class="ghost" id="copyBm">نسخ</button>
+      <div class="altcard hot">
+        <div class="alt-head">
+          <span class="alt-title">1 · الإضافة الصامتة للمتصفح</span>
+          <span class="chip-plat">Android + iOS</span>
         </div>
-        <ol class="steps">
-          <li>في Safari أضف أي صفحة إلى <b>المفضلة</b> (زر المشاركة ← إضافة إلى المفضلة).</li>
-          <li>افتح المفضلة ← «تعديل» ← اضغط العنصر الجديد ← غيّر الاسم إلى <b>فحص هذا الرابط</b>.</li>
-          <li>امسح حقل الرابط والصق الكود المنسوخ أعلاه واحفظ.</li>
-          <li>أنت على أي صفحة؟ اضغط المفضلة ← تفتح صفحة النتيجة وتفحص الصفحة الحالية تلقائياً.</li>
-        </ol>
+        <div class="alt-desc">تعمل في الخلفية بمجرد تحميل أي صفحة: تقرأ كل الروابط الظاهرة على الشاشة — نتائج البحث والخرائط — وتضع بجانب كل رابط نقطة ملونة <b>قبل أن تلمسه</b>: 🟢 آمن / 🟡 مشبوه / 🔴 خطر. بلا نوافذ ولا أزرار — صمت كامل.</div>
+        <p class="alt-path"><b>Android:</b> Firefox أو Kiwi أو Edge ← ثبّت مجلد <code>extension/</code> (متغاير <code>manifest.v2.json</code> للمتصفحات الأقدم). <b>iOS:</b> بناء Safari Web Extension بـ Mac مرة واحدة — الدليل <code>safari-ios/README.md</code>.</p>
       </div>
 
-      <div style="margin-top:20px">
-        <span class="badge alt">بديل — شاشة نتيجة ملونة كاملة من المشاركة</span>
-        <p class="sub" style="margin-bottom:6px">انسخ رابط العرض المرئي:</p>
-        <div class="urlbox">
-          <code id="webUrl">…</code>
-          <button class="ghost" id="copyWeb">نسخ</button>
+      <div class="altcard">
+        <div class="alt-head">
+          <span class="alt-title">2 · معترض الروابط الذكي — المتصفح الوسيط</span>
+          <span class="chip-plat">Android + iOS</span>
         </div>
-        <ol class="steps">
-          <li>أنشئ اختصاراً جديداً وفعّل <b>إظهار في ورقة المشاركة</b> بنوع <b>روابط URL</b>.</li>
-          <li>أضف إجراء <b>ترميز URL</b> على <b>إدخال الاختصار</b>.</li>
-          <li>أضف إجراء <b>نص</b>: الصق الرابط المنسوخ أعلاه + متغير <b>النص المشفّر</b> بعده.</li>
-          <li>أضف إجراء <b>فتح روابط</b> (Open URLs) — تفتح صفحة النتيجة وتُفحص تلقائياً.</li>
-        </ol>
+        <div class="alt-desc">عيّن حصن «متصفحاً افتراضياً»: أي رابط تضغطه في واتساب أو SMS أو الإيميل يمر أولاً عبر حصن في الخلفية — أجزاء من الثانية. آمن؟ يفتح فوراً في كروم/سفاري دون أن تشعر بشيء. خبيث؟ يُوقف الفتح وتظهر شاشة تحذير حمراء بالدرجة والأسباب والموقع الرسمي الصحيح.</div>
+        <p class="alt-path"><b>Android:</b> تطبيق Kotlin جاهز للبناء في <code>mobile/android/</code> — افتحه في Android Studio وثبّت الـ APK ثم عيّنه متصفحاً افتراضياً. <b>iOS:</b> <code>mobile/ios/</code> بـ Xcode + صلاحية تطبيق متصفح.</p>
       </div>
-    </details>
 
-    <!-- Safari التلقائي الكامل -->
-    <div style="margin-top:20px">
-      <span class="badge rec">الفحص التلقائي الكامل — داخل Safari فقط</span>
-      <p class="sub">إضافة Safari Web Extension تُثبَّت كتطبيق: تُلصق شارات ملونة على روابط الصفحات، وتحجب صفحات الخطر قبل فتحها، وتفحص نتائج البحث — تلقائياً دون أي نقرة. يطلب Safari الإذن عند أول تشغيل. البناء يحتاج حاسوب Mac مع Xcode — الدليل خطوة بخطوة في ملف <code>safari-ios/README.md</code> ضمن المستودع.</p>
+      <div class="altcard">
+        <div class="alt-head">
+          <span class="alt-title">3 · مراقب الإشعارات الفورية</span>
+          <span class="chip-plat">Android</span>
+        </div>
+        <div class="alt-desc">يراقب إشعارات الرسائل والتطبيقات فور وصولها؛ إذا احتوى الإشعار على رابط خبيث يرسل تنبيهاً تحذيرياً أحمر عالي الأولوية — <b>قبل أن تفتح الرسالة أصلاً</b>. لا يخزن نص أي إشعار: يستخرج الرابط، يفحصه، وينسى.</div>
+        <p class="alt-path"><b>Android:</b> نفس تطبيق <code>mobile/android/</code> ← زر «منح وصول الإشعارات» مرة واحدة ← انتهى.</p>
+        <p class="gated">لماذا لا يوجد على iPhone؟ لأن iOS تمنع قراءة إشعارات التطبيقات الأخرى مطلقاً — قيد نظامي صارم.</p>
+      </div>
+
+      <div class="altcard">
+        <div class="alt-head">
+          <span class="alt-title">4 · فلتر الرسائل النصية المدمج</span>
+          <span class="chip-plat">iPhone</span>
+        </div>
+        <div class="alt-desc">ميزة Apple الرسمية (Message Filtering): تطبيقك يفحص كل رسالة SMS من مرسل غير معروف في الخلفية — أي رسالة تحتوي رابط احتيالي تنتقل تلقائياً إلى مجلد <b>«الرسائل غير المرغوب فيها»</b> مع تنبيه النظام، دون أي تدخل منك.</div>
+        <p class="alt-path"><b>iOS:</b> <code>mobile/ios/MessageFilterExtension/</code> — بناء بـ Xcode + حساب Developer مدفوع + موافقة Apple على صلاحية message-filter (الخطوات كاملة في <code>mobile/ios/README.md</code>).</p>
+        <p class="gated">لماذا لا يوجد على Android؟ لأن أندرويد ألغى فلاتر SMS للتطبيقات منذ 4.4 — حصرها في تطبيق الرسائل الافتراضي.</p>
+      </div>
     </div>
 
-    <div class="once" style="background:#d9770618;border-color:#d9770644;color:#fde68a">
-      ℹ️ شفافية تقنية: Apple لا تسمح لأي طرف ثالث باعتراض كل نقرات الروابط في جميع التطبيقات — لذلك أقرب حلول «التلقائي» على iOS هي: نسخ ← لمسة على خلف الهاتف، أو زر المشاركة، أو نقرة المفضلة. وفي متصفح Safari يصبح الفحص تلقائياً بالكامل عبر الإضافة أعلاه.
+    <div class="note" style="margin-top:14px"><b>القاعدة الموحدة:</b> كل بديل يفحص محلياً حتى دون إنترنت (قواعد مدمجة)، ومع توفر الشبكة يعزز الحكم بخادم <code>/api/scan</code> — الأسوأ بين النتيجتين يحسم.</div>
+  </section>
+
+  <!-- أداة فورية بلا تثبيت: زر المفضلة الذكي -->
+  <section class="card">
+    <h2>⚡ أداة فورية بلا تثبيت — زر المفضلة الذكي</h2>
+    <p class="sub">مكمل للبدائل الأربعة: نقرة واحدة أثناء التصفح تفحص الصفحة الحالية وتفتح النتيجة — تعمل في أي متصفح على أي جهاز اليوم.</p>
+    <p class="sub" style="margin-bottom:6px">انسخ هذا الكود:</p>
+    <div class="urlbox">
+      <code id="bmCode">…</code>
+      <button class="ghost" id="copyBm">نسخ</button>
     </div>
+    <ol class="olite">
+      <li>أضف أي صفحة إلى <b>المفضلة</b> (زر المشاركة ← إضافة إلى المفضلة).</li>
+      <li>افتح المفضلة ← «تعديل» ← اضغط العنصر ← غيّر الاسم إلى <b>فحص هذا الرابط</b>.</li>
+      <li>امسح حقل الرابط والصق الكود المنسوخ واحفظ.</li>
+    </ol>
   </section>
 
   <!-- إضافة كروم -->
@@ -386,7 +361,7 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
   <footer>
     <span id="engLine"></span><br>
     الفحص القاعدي يعمل بقواعد محلية على الخادم دون تخزين بيانات شخصية.<br>
-    حصن — جدار فحص بينك وبين الروابط الاحتيالية · iOS Shortcuts + Chrome Extension
+    حصن — درع الروابط: إضافة صامتة + معترض وسيط + مراقب إشعارات + فلتر SMS
   </footer>
 </div>
 
@@ -404,9 +379,7 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
   var lastScan = null;
   var scanCtl = null;
 
-  /* تعبئة روابط الوصفات بعنوان الموقع الفعلي */
-  $('apiUrl').textContent = ORIGIN + '/api/scan?source=clipboard&format=text&url=';
-  $('webUrl').textContent = ORIGIN + '/?url=';
+  /* تعبئة كود زر المفضلة الذكي بعنوان الموقع الفعلي */
   $('bmCode').textContent = "javascript:location.href='" + ORIGIN + "/?url='+encodeURIComponent(location.href)+'&source=bookmark'";
 
   function esc(s) {
@@ -432,34 +405,7 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
       document.body.removeChild(ta);
     }
   }
-  $('copyApi').addEventListener('click', function () { copyText($('apiUrl').textContent, this); });
-
-  /* ═══ تثبيت iOS بنقرة واحدة: بناء روابط الاستيراد + تكييف البطاقة حسب الجهاز ═══
-     إصلاح خطأ «فشل الاستيراد — رابط المقدم للاختصار لم يكن صالحاً»:
-     1) الملف يُجلب الآن من مسار ينتهي بامتداد .shortcut فعلياً
-        (إعادة توجيه vercel.json من /shortcut/:file إلى /api/shortcut?name=:file)،
-     2) والمحتوى binary plist خالص — الصيغة الوحيدة التي يقبلها مستورد iOS
-        (النسخة السابقة كانت XML نصياً فرفضه iOS بهذا الخطأ)،
-     3) وزر ثالث يوفّر مساراً بديلاً مؤكداً: تنزيل الملف ثم فتحه من «الملفات». */
-  (function () {
-    const box = $('shortcut');
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    const fileUrl = function (variant) { return location.origin + '/shortcut/' + variant + '.shortcut'; };
-    const importLink = function (variant) {
-      return 'shortcuts://import-shortcut?url=' + encodeURIComponent(fileUrl(variant));
-    };
-    const clip = $('installClip'), share = $('installShare'), fileBtn = $('installFile');
-    if (clip) clip.href = importLink('clip');
-    if (share) share.href = importLink('share');
-    if (fileBtn) fileBtn.href = fileUrl('clip');
-    if (isIOS || location.search.indexOf('ios=1') !== -1) {
-      box.classList.add('ios');
-      $('untrustNote').style.display = 'block';
-      $('deskNote').style.display = 'none';
-    }
-  })();
-  $('copyWeb').addEventListener('click', function () { copyText($('webUrl').textContent, this); });
+  /* زر المفضلة الذكي — أداة فورية بلا تثبيت (ليست اختصاراً): */
   $('copyBm').addEventListener('click', function () { copyText($('bmCode').textContent, this); });
 
   /* ===== السجل المحلي ===== */
@@ -700,14 +646,14 @@ footer { text-align: center; font-size: 11.5px; color: var(--faint); margin-top:
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  /* فحص تلقائي عند الوصول بـ /?url=...&source=... (تستخدمه وصفة الاختصار البديلة) */
+  /* فحص تلقائي عند الوصول بـ /?url=...&source=... (يستخدمه زر المفضلة الذكي) */
   var q = new URLSearchParams(location.search);
   var auto = q.get('url');
   if (auto) {
     $('urlInput').value = auto;
     var s = q.get('source');
     if (s) $('sourceSel').value = s;
-    scan(auto, s || 'shortcut');
+    scan(auto, s || 'direct');
   }
 
   renderHist();
