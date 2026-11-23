@@ -7,7 +7,7 @@
   'use strict';
 
   var PCS_DATA = {
-    version: '2.2.0',
+    version: '2.3.0',
 
     /*
      * الجهات المحمية: نطاقات رسمية موثقة (الإمارات).
@@ -161,4 +161,3 @@
     module.exports = PCS_DATA;
   }
 })(typeof self !== 'undefined' ? self : globalThis);
-
