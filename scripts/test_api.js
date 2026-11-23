@@ -2,7 +2,9 @@
 /*
  * حصن (Hisn) — اختبارات دوال Vercel الخادمية: node scripts/test_api.js
  * تغطي: /api/scan (GET + POST JSON + POST نص خام + format=text + نقص المعاملات)،
- * /api/report، /api/threats، /api/health، حد المعدل، CORS، وملفات الاختصارات /api/shortcut.
+ * /api/report، /api/threats، /api/health، حد المعدل، CORS.
+ * قسم ملفات الاختصارات /api/shortcut أُزيل نهائياً مع جهاز الاختصارات —
+ * والبدائل الأربعة على الهاتف تُختبر في scripts/test_mobile.js.
  * صفر dependencies — req/res وهمية وتُرجع رمز خطأ عند أي فشل.
  */
 let passed = 0, failed = 0;
@@ -31,9 +33,10 @@ function mockRes() {
     headers: {},
     chunks: [],
     setHeader(k, v) { res.headers[k.toLowerCase()] = v; },
-    end(c) { if (c != null) res.chunks.push(String(c)); }
+    end(c) { if (c != null) res.chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(String(c))); }
   };
-  res.body = () => res.chunks.join('');
+  res.bodyBuf = () => Buffer.concat(res.chunks.map(x => Buffer.isBuffer(x) ? x : Buffer.from(x)));
+  res.body = () => res.bodyBuf().toString('utf8');
   res.json = () => { try { return JSON.parse(res.body()); } catch (e) { return null; } };
   return res;
 }
@@ -44,7 +47,7 @@ function freshCore() {
   [
     '../api/_lib/core.js',
     '../api/scan.js', '../api/report.js', '../api/threats.js',
-    '../api/health.js', '../api/shortcut.js'
+    '../api/health.js'
   ].forEach(p => { delete require.cache[require.resolve(p)]; });
 }
 
@@ -69,13 +72,35 @@ function freshCore() {
 {
   const core = freshCore();
   const scan = require('../api/scan.js');
-  const req = mockReq({ method: 'POST', body: { url: 'https://bit.ly/gift-prize', source: 'shortcut' } });
+  const req = mockReq({ method: 'POST', body: { url: 'https://bit.ly/gift-prize', source: 'interceptor' } });
   const res = mockRes();
   scan(req, res).then(() => {
     const j = res.json();
     check('scan POST JSON → 200', res.statusCode === 200);
-    check('scan POST JSON → مصدر shortcut', j.source === 'shortcut');
+    check('scan POST JSON → مصدر interceptor (معترض أندرويد)', j.source === 'interceptor');
     check('scan POST JSON → مختصر → مشبوه', j.verdict.level === 'caution');
+  });
+}
+{
+  const core = freshCore();
+  const scan = require('../api/scan.js');
+  const req = mockReq({ query: { url: 'https://adcb-secure-login.com', source: 'notification' } });
+  const res = mockRes();
+  scan(req, res).then(() => {
+    const j = res.json();
+    check('scan GET → مصدر notification (مراقب إشعارات)', j.source === 'notification');
+    check('scan GET → انتحال بنك = خطر', j.verdict.level === 'danger');
+  });
+}
+{
+  const core = freshCore();
+  const scan = require('../api/scan.js');
+  /* مصدر اختصار shortcut أُزيل نهائياً — يجب أن يسقط إلى direct */
+  const req = mockReq({ query: { url: 'https://www.emiratesnbd.com', source: 'shortcut' } });
+  const res = mockRes();
+  scan(req, res).then(() => {
+    const j = res.json();
+    check('scan → مصدر shortcut المحذوف يسقط إلى direct', j.source === 'direct');
   });
 }
 {
@@ -190,7 +215,7 @@ function freshCore() {
   const j = res.json();
   check('health → 200 وok', res.statusCode === 200 && j.ok === true);
   check('health → اسم الخدمة hisn-api', j.service === 'hisn-api');
-  check('health → إصدار المحرك 2.2.0', j.version === '2.2.0');
+  check('health → إصدار المحرك 2.3.0', j.version === '2.3.0');
   check('health → حالة الطبقة الذكية', typeof j.aiHook === 'boolean');
 }
 
@@ -210,53 +235,7 @@ function freshCore() {
   check('حد المعدل لكل IP منفصل', other.statusCode === 200);
 }
 
-/* ============ 5) /api/shortcut — توليد ملفات الاختصارات ============ */
-{
-  const core = freshCore();
-  const shortcut = require('../api/shortcut.js');
-  const res = mockRes();
-  await shortcut(mockReq({ query: { name: 'clip' }, headers: { host: 'hisn.example.vercel.app', 'x-forwarded-proto': 'https' } }), res);
-  const xml = res.body();
-  check('shortcut clip → 200', res.statusCode === 200);
-  check('shortcut clip → محتوى ثنائي التحميل', res.headers['content-type'] === 'application/octet-stream');
-  check('shortcut clip → اسم ملف عربي', res.headers['content-disposition'].indexOf('.shortcut') !== -1);
-  check('shortcut clip → XML plist صالح البداية', xml.indexOf('<?xml version="1.0"') === 0);
-  check('shortcut clip → DOCTYPE صحيح', xml.indexOf('PropertyList-1.0.dtd') !== -1);
-  check('shortcut clip → إجراء الحافظة', xml.indexOf('is.workflow.actions.getclipboard') !== -1);
-  check('shortcut clip → ترميز URL', xml.indexOf('is.workflow.actions.urlencode') !== -1);
-  check('shortcut clip → جلب الرابط', xml.indexOf('is.workflow.actions.downloadurl') !== -1);
-  check('shortcut clip → إظهار النتيجة', xml.indexOf('is.workflow.actions.showresult') !== -1);
-  check('shortcut clip → عنوان الموقع محفور', xml.indexOf('https://hisn.example.vercel.app/api/scan') !== -1);
-  check('shortcut clip → format=text للتنبيهات', xml.indexOf('format=text') !== -1);
-  check('shortcut clip → حماية XML للعلامة &', xml.indexOf('&format') === -1);
-}
-{
-  const core = freshCore();
-  const shortcut = require('../api/shortcut.js');
-  const res = mockRes();
-  await shortcut(mockReq({ query: { name: 'share' }, headers: { host: 'hisn.example.vercel.app' } }), res);
-  const xml = res.body();
-  check('shortcut share → إجراء المشاركة', xml.indexOf('is.workflow.actions.geturlsfrominput') !== -1);
-  check('shortcut share → نوع ShareSheet', xml.indexOf('ShareSheet') !== -1);
-  check('shortcut share → مصدر shortcut في API', xml.indexOf('source=shortcut') !== -1);
-}
-{
-  const core = freshCore();
-  const shortcut = require('../api/shortcut.js');
-  const res = mockRes();
-  await shortcut(mockReq({ query: {}, headers: {} }), res);
-  check('shortcut بلا ترويسة host → 400', res.statusCode === 400);
-}
-{
-  const core = freshCore();
-  const shortcut = require('../api/shortcut.js');
-  const res = mockRes();
-  /* ترويسة host عدوانية — تُرفض */
-  await shortcut(mockReq({ query: {}, headers: { host: 'evil.com\r\nX-Injected: 1' } }), res);
-  check('shortcut host مشوه → 400', res.statusCode === 400);
-}
-
-/* ============ 6) سلامة التوافق: بنية استجابة scan متطابقة مع واجهات الموقع ============ */
+/* ============ 5) سلامة التوافق: بنية استجابة scan متطابقة مع واجهات الموقع ============ */
 {
   const core = freshCore();
   const scan = require('../api/scan.js');
